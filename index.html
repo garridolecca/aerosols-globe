@@ -573,14 +573,15 @@
       "esri/Map",
       "esri/views/SceneView",
       "esri/layers/TileLayer",
-      "esri/layers/ImageryLayer",
       "esri/layers/WebTileLayer",
-      "esri/Basemap",
-      "esri/renderers/RasterStretchRenderer",
-      "esri/rest/support/AlgorithmicColorRamp",
-      "esri/rest/support/MultipartColorRamp",
-      "esri/Color"
-    ], function (Map, SceneView, TileLayer, ImageryLayer, WebTileLayer, Basemap, RasterStretchRenderer, AlgorithmicColorRamp, MultipartColorRamp, Color) {
+      "esri/Basemap"
+    ], function (Map, SceneView, TileLayer, WebTileLayer, Basemap) {
+
+      // ── GIBS date (3 days ago for data availability) ──
+      var d = new Date(); d.setDate(d.getDate() - 3);
+      var gibsDaily = d.toISOString().split("T")[0];
+      var merraD = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+      var merraMonthly = merraD.toISOString().split("T")[0];
 
       // ── Dark basemap ──
       const darkBasemap = new Basemap({
@@ -591,86 +592,39 @@
         ]
       });
 
-      // ── Helper: build color ramp renderer ──
-      function makeRenderer(colors) {
-        const ramps = [];
-        for (let i = 0; i < colors.length - 1; i++) {
-          ramps.push(new AlgorithmicColorRamp({
-            fromColor: new Color(colors[i]),
-            toColor: new Color(colors[i + 1])
-          }));
-        }
-        return new RasterStretchRenderer({
-          stretchType: "min-max",
-          colorRamp: new MultipartColorRamp({ colorRamps: ramps })
-        });
-      }
+      // ── Aerosol layers — NASA GIBS pre-rendered tiles ──
+      // Transparent bg, vivid red/orange/yellow data, instant rendering
 
-      // ── NASA PM2.5 ImageryLayer — global coverage, confirmed working ──
-      const pm25Url = "https://gis.earthdata.nasa.gov/image/rest/services/sdei/sdei-global-annual-gwr-pm2-5-modis-misr-seawifs-aod-v4-gl-03/ImageServer";
-
-      // Composite: purple/violet ramp
-      const compositeLayer = new ImageryLayer({
-        url: pm25Url,
+      // Composite: MODIS Combined AOD (daily satellite)
+      const compositeLayer = new WebTileLayer({
+        urlTemplate: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/" + gibsDaily + "/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png",
         title: "Aerosol Composite",
-        opacity: 0.75,
-        visible: true,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [10, 5, 30, 255],
-          [50, 20, 100, 255],
-          [139, 92, 246, 255],
-          [192, 132, 252, 255],
-          [245, 208, 254, 255]
-        ])
+        opacity: 0.85,
+        visible: true
       });
 
-      // Black Carbon: red/orange/yellow ramp
-      const carbonLayer = new ImageryLayer({
-        url: pm25Url,
+      // Black Carbon: OMI Absorbing AOD (daily — smoke, soot, BC)
+      const carbonLayer = new WebTileLayer({
+        urlTemplate: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Absorbing_Aerosol_Optical_Depth/default/" + gibsDaily + "/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png",
         title: "Black Carbon",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [28, 25, 23, 255],
-          [124, 45, 18, 255],
-          [220, 38, 38, 255],
-          [249, 115, 22, 255],
-          [253, 224, 71, 255]
-        ])
+        opacity: 0.85,
+        visible: false
       });
 
-      // Dust: amber/sand ramp
-      const dustLayer = new ImageryLayer({
-        url: pm25Url,
+      // Dust: MERRA-2 Dust Surface Mass (monthly reanalysis)
+      const dustLayer = new WebTileLayer({
+        urlTemplate: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MERRA2_Dust_Surface_Mass_Concentration_Monthly/default/" + merraMonthly + "/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png",
         title: "Dust",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [28, 25, 23, 255],
-          [120, 53, 15, 255],
-          [212, 160, 60, 255],
-          [251, 191, 36, 255],
-          [254, 243, 199, 255]
-        ])
+        opacity: 0.85,
+        visible: false
       });
 
-      // Sea Salt: blue ramp
-      const saltLayer = new ImageryLayer({
-        url: pm25Url,
+      // Sea Salt: OMI Aerosol Index (daily UV — smoke, dust, ash)
+      const saltLayer = new WebTileLayer({
+        urlTemplate: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Aerosol_Index/default/" + gibsDaily + "/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png",
         title: "Sea Salt",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [12, 25, 41, 255],
-          [30, 58, 95, 255],
-          [37, 99, 235, 255],
-          [96, 165, 250, 255],
-          [191, 219, 254, 255]
-        ])
+        opacity: 0.85,
+        visible: false
       });
 
       // Layer registry
