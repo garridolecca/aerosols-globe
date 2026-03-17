@@ -1,0 +1,30 @@
+{
+  "width": 360,
+  "height": 181,
+  "lon_min": -180,
+  "lon_max": 179,
+  "lat_min": -90,
+  "lat_max": 90,
+  "species": {
+    "composite": {
+      "max_uv": 21.38793182373047,
+      "max_mag": 22.143115997314453,
+      "file": "data/composite.png"
+    },
+    "black_carbon": {
+      "max_uv": 14.680380821228027,
+      "max_mag": 14.69896411895752,
+      "file": "data/black_carbon.png"
+    },
+    "dust": {
+      "max_uv": 16.218244552612305,
+      "max_mag": 16.747697830200195,
+      "file": "data/dust.png"
+    },
+    "sea_salt": {
+      "max_uv": 21.469255447387695,
+      "max_mag": 22.227310180664062,
+      "file": "data/sea_salt.png"
+    }
+  }
+}
