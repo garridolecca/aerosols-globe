@@ -278,21 +278,42 @@
       canvas.height = ch;
     }
 
-    // Web Mercator projection: lon/lat → screen x/y
+    // Convert lon/lat to Web Mercator, then to screen pixels
+    const DEG2RAD = Math.PI / 180;
+    const HALF_SIZE = 20037508.342789244; // Web Mercator half-world size
+
+    function lonToMerc(lon) { return lon * HALF_SIZE / 180; }
+    function latToMerc(lat) {
+      const rad = Math.max(-85, Math.min(85, lat)) * DEG2RAD;
+      return Math.log(Math.tan(Math.PI / 4 + rad / 2)) * HALF_SIZE / Math.PI;
+    }
+
     function project(lon, lat) {
       const ext = view.extent;
       if (!ext) return null;
-      const x = ((lon - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
-      const y = (1 - (lat - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
+      const mx = lonToMerc(lon);
+      const my = latToMerc(lat);
+      const x = ((mx - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
+      const y = (1 - (my - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
       return [x, y];
     }
 
-    function randomParticle() {
+    // Get visible extent in lon/lat for spawning particles
+    function getGeoExtent() {
       const ext = view.extent;
-      if (!ext) return { x: 0, y: 0, age: 0 };
+      if (!ext) return { lonMin: -180, lonMax: 180, latMin: -60, latMax: 70 };
+      const lonMin = Math.max(-180, ext.xmin * 180 / HALF_SIZE);
+      const lonMax = Math.min(180, ext.xmax * 180 / HALF_SIZE);
+      const latMin = Math.max(-85, (Math.atan(Math.exp(ext.ymin * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
+      const latMax = Math.min(85, (Math.atan(Math.exp(ext.ymax * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
+      return { lonMin, lonMax, latMin, latMax };
+    }
+
+    function randomParticle() {
+      const ge = getGeoExtent();
       return {
-        x: ext.xmin + Math.random() * (ext.xmax - ext.xmin),
-        y: ext.ymin + Math.random() * (ext.ymax - ext.ymin),
+        x: ge.lonMin + Math.random() * (ge.lonMax - ge.lonMin),
+        y: ge.latMin + Math.random() * (ge.latMax - ge.latMin),
         age: Math.floor(Math.random() * 80)
       };
     }
@@ -378,7 +399,8 @@
         if (p.x > 180) p.x -= 360;
         if (p.x < -180) p.x += 360;
         if (p.y > 85 || p.y < -85) { particles[i] = randomParticle(); continue; }
-        if (p.x < ext.xmin || p.x > ext.xmax || p.y < ext.ymin || p.y > ext.ymax) {
+        const ge = getGeoExtent();
+        if (p.x < ge.lonMin || p.x > ge.lonMax || p.y < ge.latMin || p.y > ge.latMax) {
           particles[i] = randomParticle(); continue;
         }
 
