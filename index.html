@@ -295,19 +295,28 @@
   <script type="module">
     import Map from "@arcgis/core/Map.js";
     import MapView from "@arcgis/core/views/MapView.js";
+    import SpatialReference from "@arcgis/core/geometry/SpatialReference.js";
+    import Point from "@arcgis/core/geometry/Point.js";
 
     document.getElementById("dateDisplay").textContent = new Date().toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
 
     // ═══════════════════════════════════════
-    //  ArcGIS dark basemap
+    //  ArcGIS dark basemap — Robinson projection (54030)
     // ═══════════════════════════════════════
+    const robinson = new SpatialReference({ wkid: 54030 });
     const map = new Map({ basemap: "dark-gray-vector" });
     const view = new MapView({
       container: "viewDiv", map,
-      center: [40, 20], zoom: 2,
-      constraints: { minZoom: 2, maxZoom: 6, rotationEnabled: false },
+      spatialReference: robinson,
+      center: [0, 0],
+      scale: 200000000,
+      constraints: {
+        minScale: 300000000,
+        maxScale: 30000000,
+        rotationEnabled: false
+      },
       background: { color: [0, 0, 0, 1] },
       ui: { components: ["zoom"] },
       popup: { autoOpenEnabled: false }
@@ -388,35 +397,19 @@
       canvas.height = ch;
     }
 
-    // Convert lon/lat to Web Mercator, then to screen pixels
-    const DEG2RAD = Math.PI / 180;
-    const HALF_SIZE = 20037508.342789244; // Web Mercator half-world size
-
-    function lonToMerc(lon) { return lon * HALF_SIZE / 180; }
-    function latToMerc(lat) {
-      const rad = Math.max(-85, Math.min(85, lat)) * DEG2RAD;
-      return Math.log(Math.tan(Math.PI / 4 + rad / 2)) * HALF_SIZE / Math.PI;
-    }
+    // ── Projection: use ArcGIS view.toScreen (handles Robinson natively) ──
+    const _ptCache = new Point({ longitude: 0, latitude: 0 });
 
     function project(lon, lat) {
-      const ext = view.extent;
-      if (!ext) return null;
-      const mx = lonToMerc(lon);
-      const my = latToMerc(lat);
-      const x = ((mx - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
-      const y = (1 - (my - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
-      return [x, y];
+      _ptCache.longitude = lon;
+      _ptCache.latitude = lat;
+      const sp = view.toScreen(_ptCache);
+      if (!sp || sp.x == null || isNaN(sp.x)) return null;
+      return [sp.x, sp.y];
     }
 
-    // Get visible extent in lon/lat for spawning particles
     function getGeoExtent() {
-      const ext = view.extent;
-      if (!ext) return { lonMin: -180, lonMax: 180, latMin: -60, latMax: 70 };
-      const lonMin = Math.max(-180, ext.xmin * 180 / HALF_SIZE);
-      const lonMax = Math.min(180, ext.xmax * 180 / HALF_SIZE);
-      const latMin = Math.max(-85, (Math.atan(Math.exp(ext.ymin * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
-      const latMax = Math.min(85, (Math.atan(Math.exp(ext.ymax * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
-      return { lonMin, lonMax, latMin, latMax };
+      return { lonMin: -175, lonMax: 175, latMin: -78, latMax: 78 };
     }
 
     function randomParticle() {
@@ -508,9 +501,7 @@
         // Wrap/reset
         if (p.x > 180) p.x -= 360;
         if (p.x < -180) p.x += 360;
-        if (p.y > 85 || p.y < -85) { particles[i] = randomParticle(); continue; }
-        const ge = getGeoExtent();
-        if (p.x < ge.lonMin || p.x > ge.lonMax || p.y < ge.latMin || p.y > ge.latMax) {
+        if (p.y > 78 || p.y < -78 || p.x > 175 || p.x < -175) {
           particles[i] = randomParticle(); continue;
         }
 
