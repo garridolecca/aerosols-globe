@@ -346,8 +346,6 @@
     import MapView from "@arcgis/core/views/MapView.js";
     import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
     import ImageryTileLayer from "@arcgis/core/layers/ImageryTileLayer.js";
-    import FlowRenderer from "@arcgis/core/renderers/FlowRenderer.js";
-    import Color from "@arcgis/core/Color.js";
 
     const now = new Date();
     document.getElementById("dateDisplay").textContent = now.toLocaleDateString("en-US", {
@@ -357,70 +355,65 @@
       month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
     }) + " UTC";
 
-    // ── Dates for GIBS tiles ──
+    // GIBS dates
     const gibsD = new Date(now); gibsD.setDate(gibsD.getDate() - 3);
     const gibsDaily = gibsD.toISOString().split("T")[0];
     const merraD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const merraMonthly = merraD.toISOString().split("T")[0];
 
     // ══════════════════════════════════════
-    //  AEROSOL LAYERS — NASA GIBS WebTileLayer
-    //  Pre-rendered PNG tiles with transparent bg
-    //  Instant rendering, CORS-friendly, no effects needed
+    //  AEROSOL LAYERS — NASA GIBS tiles
     // ══════════════════════════════════════
-
-    // 1. Total AOD — MODIS Combined (daily satellite)
     const compositeLayer = new WebTileLayer({
       urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Total AOD (MODIS)",
-      opacity: 0.9,
-      visible: true
+      title: "Total AOD (MODIS)", opacity: 0.8, visible: true
     });
 
-    // 2. Absorbing AOD — OMI (daily, smoke/soot/BC)
     const carbonLayer = new WebTileLayer({
       urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Absorbing_Aerosol_Optical_Depth/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Absorbing AOD (OMI)",
-      opacity: 0.9,
-      visible: false
+      title: "Absorbing AOD (OMI)", opacity: 0.8, visible: false
     });
 
-    // 3. Dust — MERRA-2 (monthly reanalysis)
     const dustLayer = new WebTileLayer({
       urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MERRA2_Dust_Surface_Mass_Concentration_Monthly/default/${merraMonthly}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Dust (MERRA-2)",
-      opacity: 0.9,
-      visible: false
+      title: "Dust (MERRA-2)", opacity: 0.8, visible: false
     });
 
-    // 4. Aerosol Index — OMI UV (daily, smoke/dust detection)
     const saltLayer = new WebTileLayer({
       urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Aerosol_Index/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Aerosol Index (OMI)",
-      opacity: 0.9,
-      visible: false
+      title: "Aerosol Index (OMI)", opacity: 0.8, visible: false
     });
 
     // ══════════════════════════════════════
-    //  OCEAN CURRENT FLOW — FlowRenderer
-    //  Animated particle trails (confirmed working)
+    //  GLOBAL WIND FLOW — ERA5 FlowRenderer
+    //  Color-coded by wind speed, covers entire globe
     // ══════════════════════════════════════
     const flowLayer = new ImageryTileLayer({
-      url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/annual_drifter_mean_v3/ImageServer",
-      title: "Ocean Surface Currents",
-      renderer: new FlowRenderer({
+      url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/Global_Average_Wind_Speeds_Month_Altitude/ImageServer",
+      title: "Global Wind Flow (ERA5)",
+      renderer: {
+        type: "flow",
         trailWidth: "2px",
-        density: 1,
+        density: 0.8,
         flowSpeed: 10,
-        trailLength: 300,
-        color: new Color([100, 190, 255, 0.55]),
-        maxPathLength: 400,
-        trailCap: "round"
-      }),
-      opacity: 0.7,
+        trailLength: 200,
+        maxPathLength: 300,
+        trailCap: "round",
+        visualVariables: [{
+          type: "color",
+          field: "Magnitude",
+          stops: [
+            { color: [10, 30, 80, 0.4], value: 0 },
+            { color: [40, 146, 199, 0.7], value: 3 },
+            { color: [100, 220, 160, 0.85], value: 6 },
+            { color: [220, 230, 100, 0.95], value: 10 },
+            { color: [255, 100, 50, 1], value: 15 }
+          ]
+        }]
+      },
+      opacity: 0.75,
       visible: true,
-      blendMode: "screen",
-      effect: "bloom(1.5, 1px, 0)"
+      effect: "bloom(1.5, 0.5px, 0)"
     });
 
     const layerMap = {
@@ -431,7 +424,7 @@
     };
 
     // ══════════════════════════════════════
-    //  2D MAP VIEW
+    //  MAP VIEW
     // ══════════════════════════════════════
     const map = new Map({
       basemap: "dark-gray-vector",
@@ -451,9 +444,7 @@
 
     view.ui.move("zoom", "top-right");
 
-    // ══════════════════════════════════════
-    //  STATUS TRACKING
-    // ══════════════════════════════════════
+    // ── Status tracking ──
     function track(layer, id) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -468,9 +459,7 @@
     track(saltLayer, "st-salt");
     track(flowLayer, "st-flow");
 
-    // ══════════════════════════════════════
-    //  AUTO-PAN
-    // ══════════════════════════════════════
+    // ── Auto-pan ──
     let panning = true;
     let panHandle = null;
 
@@ -521,8 +510,7 @@
     document.getElementById("bloomSlider").addEventListener("input", e => {
       const v = (e.target.value / 10).toFixed(1);
       document.getElementById("bloomValue").textContent = v;
-      const fx = v > 0 ? `bloom(${v}, 2px, 0)` : "";
-      flowLayer.effect = fx;
+      flowLayer.effect = v > 0 ? `bloom(${v}, 0.5px, 0)` : "";
     });
 
     document.getElementById("flowToggle").addEventListener("change", e => {
