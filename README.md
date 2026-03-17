@@ -1,6 +1,6 @@
 # Earth in Action — Aerosols Globe
 
-An interactive 3D globe visualization of atmospheric aerosols using ArcGIS Maps SDK for JavaScript.
+Interactive 3D globe visualization of atmospheric aerosols with animated ocean current flow, built with ArcGIS Maps SDK for JavaScript 5.0.
 
 ## Live Demo
 
@@ -8,26 +8,33 @@ An interactive 3D globe visualization of atmospheric aerosols using ArcGIS Maps 
 
 ## Features
 
-- **3D rotating globe** with stars and atmospheric effects
-- **Four aerosol layers** — toggle independently:
-  - Aerosol Composite (MODIS Terra AOD)
-  - Black Carbon (combustion & wildfire emissions)
-  - Dust (wind-lofted desert particles)
-  - Sea Salt (ocean spray & maritime aerosols)
-- **Real-time data** from NASA GEOS-5 and ArcGIS Living Atlas
-- Layer opacity control and animated time stepping
-- Dark theme with screen-blended overlays
+- **3D rotating globe** with stars, atmosphere, and weather effects
+- **Four distinct aerosol layers** — toggle independently:
+  - **Total AOD** — NASA MODIS Combined Value-Added AOD (daily satellite)
+  - **Absorbing Aerosols** — NASA OMI Absorbing AOD (smoke, soot, black carbon)
+  - **Dust** — NASA MERRA-2 Dust Surface Mass Concentration (monthly reanalysis)
+  - **Sea Salt** — ECMWF CAMS Sea Salt AOD at 550nm (forecast model)
+- **Animated ocean current flow** — FlowRenderer particle trails on Global Drifter Program data
+- Layer opacity, flow density, and flow speed controls
+- Auto-rotating globe with play/pause
+- Live status badges per layer (LOADING / LIVE / ERROR)
+- Dark theme with screen-blended glowing overlays
 
 ## Data Sources
 
-- [NASA GEOS-5](https://gmao.gsfc.nasa.gov/GEOS_systems/) Earth system model
-- [NASA NEO](https://neo.gsfc.nasa.gov/) WMS services (MODIS aerosol products)
-- [ArcGIS Living Atlas](https://livingatlas.arcgis.com/) imagery tile services
+| Layer | Source | Temporal | Service |
+|-------|--------|----------|---------|
+| Total AOD | NASA MODIS (Terra + Aqua) | Daily | GIBS WMTS |
+| Absorbing AOD | NASA OMI (Aura) | Daily | GIBS WMTS |
+| Dust | NASA MERRA-2 Reanalysis | Monthly | GIBS WMTS |
+| Sea Salt | ECMWF Copernicus CAMS | Forecast | WMS |
+| Ocean Flow | Global Drifter Program | Climatology | Esri Living Atlas |
 
 ## Tech Stack
 
-- ArcGIS Maps SDK for JavaScript 4.31 (SceneView)
-- Calcite Design System (dark theme)
+- ArcGIS Maps SDK for JavaScript 5.0 (SceneView, ES modules)
+- FlowRenderer for animated ocean current particles
+- WebTileLayer (NASA GIBS), WMSLayer (CAMS), ImageryTileLayer (Esri)
 - Vanilla HTML/CSS/JS — no build step required
 
 ## Usage
