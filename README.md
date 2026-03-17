@@ -4,7 +4,7 @@ An interactive 3D globe visualization of atmospheric aerosols using ArcGIS Maps 
 
 ## Live Demo
 
-**[View Live](https://jhon9904.github.io/aerosols-globe/)**
+**[View Live](https://garridolecca.github.io/aerosols-globe/)**
 
 ## Features
 
