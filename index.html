@@ -220,8 +220,8 @@
         <div class="aerosol-card composite active" data-layer="composite">
           <div class="dot"></div>
           <div class="info">
-            <h4>Aerosol Composite <span class="status loading" id="st-composite">...</span></h4>
-            <p>Total PM2.5 — all particle types</p>
+            <h4>Total AOD <span class="status loading" id="st-composite">...</span></h4>
+            <p>MODIS combined value-added AOD (daily)</p>
           </div>
           <div class="toggle"></div>
         </div>
@@ -229,8 +229,8 @@
         <div class="aerosol-card carbon" data-layer="carbon">
           <div class="dot"></div>
           <div class="info">
-            <h4>Black Carbon <span class="status loading" id="st-carbon">...</span></h4>
-            <p>Combustion, wildfires, soot</p>
+            <h4>Absorbing AOD <span class="status loading" id="st-carbon">...</span></h4>
+            <p>OMI absorbing aerosols — smoke, soot</p>
           </div>
           <div class="toggle"></div>
         </div>
@@ -239,7 +239,7 @@
           <div class="dot"></div>
           <div class="info">
             <h4>Dust <span class="status loading" id="st-dust">...</span></h4>
-            <p>Saharan, Gobi, Arabian mineral dust</p>
+            <p>MERRA-2 dust surface concentration</p>
           </div>
           <div class="toggle"></div>
         </div>
@@ -247,8 +247,8 @@
         <div class="aerosol-card salt" data-layer="salt">
           <div class="dot"></div>
           <div class="info">
-            <h4>Sea Salt <span class="status loading" id="st-salt">...</span></h4>
-            <p>Maritime spray, ocean aerosols</p>
+            <h4>Aerosol Index <span class="status loading" id="st-salt">...</span></h4>
+            <p>OMI UV index — smoke, dust, volcanic ash</p>
           </div>
           <div class="toggle"></div>
         </div>
@@ -344,14 +344,11 @@
   <script type="module">
     import Map from "@arcgis/core/Map.js";
     import MapView from "@arcgis/core/views/MapView.js";
-    import TileLayer from "@arcgis/core/layers/TileLayer.js";
-    import ImageryLayer from "@arcgis/core/layers/ImageryLayer.js";
+    import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
     import ImageryTileLayer from "@arcgis/core/layers/ImageryTileLayer.js";
-    import Basemap from "@arcgis/core/Basemap.js";
     import FlowRenderer from "@arcgis/core/renderers/FlowRenderer.js";
     import Color from "@arcgis/core/Color.js";
 
-    // Date display
     const now = new Date();
     document.getElementById("dateDisplay").textContent = now.toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
@@ -360,83 +357,67 @@
       month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
     }) + " UTC";
 
+    // ── Dates for GIBS tiles ──
+    const gibsD = new Date(now); gibsD.setDate(gibsD.getDate() - 3);
+    const gibsDaily = gibsD.toISOString().split("T")[0];
+    const merraD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const merraMonthly = merraD.toISOString().split("T")[0];
+
     // ══════════════════════════════════════
-    //  BASEMAP — very dark, no labels
+    //  AEROSOL LAYERS — NASA GIBS WebTileLayer
+    //  Pre-rendered PNG tiles with transparent bg
+    //  Instant rendering, CORS-friendly, no effects needed
     // ══════════════════════════════════════
-    const basemap = new Basemap({
-      baseLayers: [
-        new TileLayer({
-          url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer",
-          opacity: 0.6
-        })
-      ]
+
+    // 1. Total AOD — MODIS Combined (daily satellite)
+    const compositeLayer = new WebTileLayer({
+      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
+      title: "Total AOD (MODIS)",
+      opacity: 0.9,
+      visible: true
+    });
+
+    // 2. Absorbing AOD — OMI (daily, smoke/soot/BC)
+    const carbonLayer = new WebTileLayer({
+      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Absorbing_Aerosol_Optical_Depth/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
+      title: "Absorbing AOD (OMI)",
+      opacity: 0.9,
+      visible: false
+    });
+
+    // 3. Dust — MERRA-2 (monthly reanalysis)
+    const dustLayer = new WebTileLayer({
+      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MERRA2_Dust_Surface_Mass_Concentration_Monthly/default/${merraMonthly}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
+      title: "Dust (MERRA-2)",
+      opacity: 0.9,
+      visible: false
+    });
+
+    // 4. Aerosol Index — OMI UV (daily, smoke/dust detection)
+    const saltLayer = new WebTileLayer({
+      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Aerosol_Index/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
+      title: "Aerosol Index (OMI)",
+      opacity: 0.9,
+      visible: false
     });
 
     // ══════════════════════════════════════
-    //  AEROSOL LAYERS
-    //  NASA SEDAC PM2.5 ImageServer (verified rendering)
-    //  Colorized via CSS effect chain:
-    //    brightness → contrast → sepia → hue-rotate → saturate → bloom
-    //  (sepia adds hue to grayscale, then hue-rotate shifts it)
-    // ══════════════════════════════════════
-    const PM25_URL = "https://gis.earthdata.nasa.gov/image/rest/services/sdei/sdei-global-annual-gwr-pm2-5-modis-misr-seawifs-aod-v4-gl-03/ImageServer";
-
-    // Effect chain: grayscale → brightness → contrast → sepia (add hue) → hue-rotate → saturate → bloom
-    const FX_BASE = "brightness(3.5) contrast(1.8) sepia(100%)";
-
-    const compositeLayer = new ImageryLayer({
-      url: PM25_URL,
-      title: "Aerosol Composite",
-      opacity: 0.85,
-      visible: true,
-      blendMode: "screen",
-      effect: `${FX_BASE} hue-rotate(260deg) saturate(500%) bloom(2, 3px, 0.04)`
-    });
-
-    const carbonLayer = new ImageryLayer({
-      url: PM25_URL,
-      title: "Black Carbon",
-      opacity: 0.85,
-      visible: false,
-      blendMode: "screen",
-      effect: `${FX_BASE} hue-rotate(330deg) saturate(450%) bloom(2, 3px, 0.04)`
-    });
-
-    const dustLayer = new ImageryLayer({
-      url: PM25_URL,
-      title: "Dust",
-      opacity: 0.85,
-      visible: false,
-      blendMode: "screen",
-      effect: `${FX_BASE} hue-rotate(15deg) saturate(450%) bloom(2, 3px, 0.04)`
-    });
-
-    const saltLayer = new ImageryLayer({
-      url: PM25_URL,
-      title: "Sea Salt",
-      opacity: 0.85,
-      visible: false,
-      blendMode: "screen",
-      effect: `${FX_BASE} hue-rotate(190deg) saturate(500%) bloom(2, 3px, 0.04)`
-    });
-
-    // ══════════════════════════════════════
-    //  OCEAN CURRENT FLOW (FlowRenderer)
-    //  Global Drifter Program — Vector-MagDir
+    //  OCEAN CURRENT FLOW — FlowRenderer
+    //  Animated particle trails (confirmed working)
     // ══════════════════════════════════════
     const flowLayer = new ImageryTileLayer({
       url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/annual_drifter_mean_v3/ImageServer",
-      title: "Ocean Currents",
+      title: "Ocean Surface Currents",
       renderer: new FlowRenderer({
         trailWidth: "2px",
-        density: 0.8,
+        density: 1,
         flowSpeed: 10,
-        trailLength: 250,
-        color: new Color([120, 200, 255, 0.5]),
-        maxPathLength: 300,
+        trailLength: 300,
+        color: new Color([100, 190, 255, 0.55]),
+        maxPathLength: 400,
         trailCap: "round"
       }),
-      opacity: 0.65,
+      opacity: 0.7,
       visible: true,
       blendMode: "screen",
       effect: "bloom(1.5, 1px, 0)"
@@ -450,27 +431,22 @@
     };
 
     // ══════════════════════════════════════
-    //  2D MAP VIEW (enables layer.effect!)
+    //  2D MAP VIEW
     // ══════════════════════════════════════
     const map = new Map({
-      basemap: basemap,
+      basemap: "dark-gray-vector",
       layers: [compositeLayer, carbonLayer, dustLayer, saltLayer, flowLayer]
     });
 
     const view = new MapView({
       container: "viewDiv",
       map: map,
-      center: [50, 25],
-      zoom: 2,
-      constraints: {
-        minZoom: 2,
-        maxZoom: 6,
-        rotationEnabled: false
-      },
+      center: [60, 20],
+      zoom: 3,
+      constraints: { minZoom: 2, maxZoom: 6, rotationEnabled: false },
       background: { color: [0, 0, 0, 1] },
       ui: { components: ["zoom"] },
-      popup: { autoOpenEnabled: false },
-      navigation: { mouseWheelZoomEnabled: true }
+      popup: { autoOpenEnabled: false }
     });
 
     view.ui.move("zoom", "top-right");
@@ -493,7 +469,7 @@
     track(flowLayer, "st-flow");
 
     // ══════════════════════════════════════
-    //  AUTO-PAN ANIMATION
+    //  AUTO-PAN
     // ══════════════════════════════════════
     let panning = true;
     let panHandle = null;
@@ -522,7 +498,6 @@
     //  UI CONTROLS
     // ══════════════════════════════════════
 
-    // Layer toggles
     document.querySelectorAll(".aerosol-card").forEach(card => {
       card.addEventListener("click", () => {
         const name = card.dataset.layer;
@@ -537,46 +512,35 @@
       });
     });
 
-    // Opacity
     document.getElementById("opacitySlider").addEventListener("input", e => {
       const v = e.target.value;
       document.getElementById("opacityValue").textContent = v + "%";
       Object.values(layerMap).forEach(l => { l.opacity = v / 100; });
     });
 
-    // Bloom — rebuild full effect chain per layer
-    const hueMap = { composite: 260, carbon: 330, dust: 15, salt: 190 };
-    const satMap = { composite: 500, carbon: 450, dust: 450, salt: 500 };
-
     document.getElementById("bloomSlider").addEventListener("input", e => {
       const v = (e.target.value / 10).toFixed(1);
       document.getElementById("bloomValue").textContent = v;
-      for (const [name, layer] of Object.entries(layerMap)) {
-        const bloom = v > 0 ? `bloom(${v * 1.4}, 3px, 0.04)` : "";
-        layer.effect = `${FX_BASE} hue-rotate(${hueMap[name]}deg) saturate(${satMap[name]}%) ${bloom}`;
-      }
+      const fx = v > 0 ? `bloom(${v}, 2px, 0)` : "";
+      flowLayer.effect = fx;
     });
 
-    // Flow toggle
     document.getElementById("flowToggle").addEventListener("change", e => {
       flowLayer.visible = e.target.checked;
     });
 
-    // Flow density
     document.getElementById("densitySlider").addEventListener("input", e => {
       const r = flowLayer.renderer.clone();
       r.density = e.target.value / 10;
       flowLayer.renderer = r;
     });
 
-    // Flow speed
     document.getElementById("speedSlider").addEventListener("input", e => {
       const r = flowLayer.renderer.clone();
       r.flowSpeed = parseInt(e.target.value);
       flowLayer.renderer = r;
     });
 
-    // Play/Pause
     document.getElementById("btnPlay").addEventListener("click", () => {
       panning = !panning;
       const btn = document.getElementById("btnPlay");
