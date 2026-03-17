@@ -76,7 +76,7 @@
     .map-wrap { position: relative; overflow: hidden; background: #000; }
     #viewDiv { width: 100%; height: 100%; }
     /* Dark overlay to dim basemap — makes particles pop */
-    #mapDim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 1; pointer-events: none; }
+    #mapDim { position: absolute; inset: 0; background: rgba(0,0,0,0.25); z-index: 1; pointer-events: none; }
     #particleCanvas {
       position: absolute; inset: 0; pointer-events: none; z-index: 2;
     }
@@ -311,7 +311,7 @@
       container: "viewDiv", map,
       spatialReference: robinson,
       center: [0, 0],
-      scale: 200000000,
+      scale: 130000000,
       constraints: {
         minScale: 300000000,
         maxScale: 30000000,
