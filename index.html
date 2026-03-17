@@ -572,14 +572,15 @@
     require([
       "esri/Map",
       "esri/views/SceneView",
-      "esri/layers/ImageryTileLayer",
-      "esri/layers/WMSLayer",
       "esri/layers/TileLayer",
       "esri/layers/ImageryLayer",
-      "esri/layers/WMTSLayer",
+      "esri/layers/WebTileLayer",
       "esri/Basemap",
-      "esri/layers/VectorTileLayer"
-    ], function (Map, SceneView, ImageryTileLayer, WMSLayer, TileLayer, ImageryLayer, WMTSLayer, Basemap, VectorTileLayer) {
+      "esri/renderers/RasterStretchRenderer",
+      "esri/rest/support/AlgorithmicColorRamp",
+      "esri/rest/support/MultipartColorRamp",
+      "esri/Color"
+    ], function (Map, SceneView, TileLayer, ImageryLayer, WebTileLayer, Basemap, RasterStretchRenderer, AlgorithmicColorRamp, MultipartColorRamp, Color) {
 
       // ── Dark basemap ──
       const darkBasemap = new Basemap({
@@ -590,53 +591,86 @@
         ]
       });
 
-      // ── Aerosol imagery layers (from ArcGIS Living Atlas / NASA) ──
-      // Composite: NASA GEOS-5 Aerosol Optical Depth (multispectral imagery)
-      const compositeLayer = new ImageryTileLayer({
-        url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/MODIS_Terra_Aerosol_Optical_Depth/ImageServer",
+      // ── Helper: build color ramp renderer ──
+      function makeRenderer(colors) {
+        const ramps = [];
+        for (let i = 0; i < colors.length - 1; i++) {
+          ramps.push(new AlgorithmicColorRamp({
+            fromColor: new Color(colors[i]),
+            toColor: new Color(colors[i + 1])
+          }));
+        }
+        return new RasterStretchRenderer({
+          stretchType: "min-max",
+          colorRamp: new MultipartColorRamp({ colorRamps: ramps })
+        });
+      }
+
+      // ── NASA PM2.5 ImageryLayer — global coverage, confirmed working ──
+      const pm25Url = "https://gis.earthdata.nasa.gov/image/rest/services/sdei/sdei-global-annual-gwr-pm2-5-modis-misr-seawifs-aod-v4-gl-03/ImageServer";
+
+      // Composite: purple/violet ramp
+      const compositeLayer = new ImageryLayer({
+        url: pm25Url,
         title: "Aerosol Composite",
         opacity: 0.75,
         visible: true,
-        blendMode: "screen"
+        blendMode: "screen",
+        renderer: makeRenderer([
+          [10, 5, 30, 255],
+          [50, 20, 100, 255],
+          [139, 92, 246, 255],
+          [192, 132, 252, 255],
+          [245, 208, 254, 255]
+        ])
       });
 
-      // Black Carbon - using a WMS from NASA Worldview
-      const carbonLayer = new WMSLayer({
-        url: "https://neo.gsfc.nasa.gov/wms/wms",
-        sublayers: [{
-          name: "MODAL2_M_AER_OD",
-          title: "Black Carbon"
-        }],
+      // Black Carbon: red/orange/yellow ramp
+      const carbonLayer = new ImageryLayer({
+        url: pm25Url,
         title: "Black Carbon",
         opacity: 0.75,
         visible: false,
-        blendMode: "screen"
+        blendMode: "screen",
+        renderer: makeRenderer([
+          [28, 25, 23, 255],
+          [124, 45, 18, 255],
+          [220, 38, 38, 255],
+          [249, 115, 22, 255],
+          [253, 224, 71, 255]
+        ])
       });
 
-      // Dust: MODIS Deep Blue Aerosol
-      const dustLayer = new WMSLayer({
-        url: "https://neo.gsfc.nasa.gov/wms/wms",
-        sublayers: [{
-          name: "MYDAL2_M_AER_OD",
-          title: "Dust Aerosol"
-        }],
+      // Dust: amber/sand ramp
+      const dustLayer = new ImageryLayer({
+        url: pm25Url,
         title: "Dust",
         opacity: 0.75,
         visible: false,
-        blendMode: "screen"
+        blendMode: "screen",
+        renderer: makeRenderer([
+          [28, 25, 23, 255],
+          [120, 53, 15, 255],
+          [212, 160, 60, 255],
+          [251, 191, 36, 255],
+          [254, 243, 199, 255]
+        ])
       });
 
-      // Sea Salt: Using alternate aerosol product
-      const saltLayer = new WMSLayer({
-        url: "https://neo.gsfc.nasa.gov/wms/wms",
-        sublayers: [{
-          name: "MODAL2_M_AER_RA",
-          title: "Sea Salt"
-        }],
+      // Sea Salt: blue ramp
+      const saltLayer = new ImageryLayer({
+        url: pm25Url,
         title: "Sea Salt",
         opacity: 0.75,
         visible: false,
-        blendMode: "screen"
+        blendMode: "screen",
+        renderer: makeRenderer([
+          [12, 25, 41, 255],
+          [30, 58, 95, 255],
+          [37, 99, 235, 255],
+          [96, 165, 250, 255],
+          [191, 219, 254, 255]
+        ])
       });
 
       // Layer registry
@@ -645,13 +679,6 @@
         carbon: carbonLayer,
         dust: dustLayer,
         salt: saltLayer
-      };
-
-      const legendClasses = {
-        composite: 'legend-composite',
-        carbon: 'legend-carbon',
-        dust: 'legend-dust',
-        salt: 'legend-salt'
       };
 
       // ── Map + Scene ──
