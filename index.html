@@ -75,9 +75,74 @@
     /* Map */
     .map-wrap { position: relative; overflow: hidden; background: #000; }
     #viewDiv { width: 100%; height: 100%; }
+    /* Dark overlay to dim basemap — makes particles pop */
+    #mapDim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 1; pointer-events: none; }
     #particleCanvas {
       position: absolute; inset: 0; pointer-events: none; z-index: 2;
     }
+
+    /* ── Intro overlay ── */
+    .intro {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0a0e17 0%, #131a2e 50%, #0a0e17 100%);
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.6s, visibility 0.6s;
+    }
+    .intro.hidden { opacity: 0; visibility: hidden; }
+    .intro-box {
+      max-width: 720px; width: 90%; max-height: 90vh; overflow-y: auto;
+      padding: 48px 44px; color: var(--text-primary);
+    }
+    .intro-box::-webkit-scrollbar { width: 4px; }
+    .intro-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+    .intro-box .brand {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 32px;
+    }
+    .intro-box .brand .icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand), #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .intro-box .brand .icon svg { width: 24px; height: 24px; fill: white; }
+    .intro-box .brand h2 { font-size: 26px; font-weight: 700; }
+    .intro-box .brand h2 span { color: var(--brand); font-weight: 300; }
+    .intro-box h3 {
+      font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--brand); margin: 28px 0 12px; font-weight: 600;
+    }
+    .intro-box h3:first-of-type { margin-top: 0; }
+    .intro-box p, .intro-box li {
+      font-size: 14px; line-height: 1.7; color: var(--text-secondary);
+    }
+    .intro-box strong { color: var(--text-primary); font-weight: 500; }
+    .intro-box ol, .intro-box ul { padding-left: 20px; margin: 8px 0; }
+    .intro-box li { margin-bottom: 6px; }
+    .intro-box .step-num {
+      display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(0,180,216,0.15); color: var(--brand);
+      font-size: 11px; font-weight: 700; text-align: center; line-height: 22px;
+      margin-right: 8px;
+    }
+    .intro-box .source-tag {
+      display: inline-block; padding: 2px 8px; border-radius: 4px;
+      background: rgba(139,92,246,0.12); color: #a78bfa; font-size: 11px;
+      font-weight: 500; margin: 2px 2px;
+    }
+    .intro-box .credit {
+      margin-top: 32px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px; color: var(--text-secondary);
+    }
+    .intro-box .credit strong { color: var(--text-primary); font-size: 15px; }
+    .enter-btn {
+      display: block; margin: 36px auto 0; padding: 14px 48px;
+      background: linear-gradient(135deg, var(--brand), #8b5cf6);
+      color: white; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 24px rgba(0,180,216,0.25);
+    }
+    .enter-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 32px rgba(0,180,216,0.35); }
 
     .loading {
       position: absolute; inset: 0; background: #000; display: flex;
@@ -174,11 +239,56 @@
 
     <div class="map-wrap">
       <div id="viewDiv"></div>
+      <div id="mapDim"></div>
       <canvas id="particleCanvas"></canvas>
       <div class="loading" id="loader">
         <div class="spinner"></div>
         <p>Loading aerosol data...</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Intro Page ── -->
+  <div class="intro" id="intro">
+    <div class="intro-box">
+      <div class="brand">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg></div>
+        <h2>Earth in Action<span> Aerosols</span></h2>
+      </div>
+
+      <p>An animated visualization of <strong>real atmospheric aerosol transport</strong> using NASA satellite data and global wind patterns.</p>
+
+      <h3>How This Map Was Created</h3>
+      <ol>
+        <li><span class="step-num">1</span><strong>Data Acquisition</strong> — Wind vectors (U10M, V10M) and aerosol surface mass concentrations are downloaded in real-time from <strong>NASA GEOS-FP</strong> (Forward Processing) at 0.25° global resolution via OPeNDAP. <span class="source-tag">No authentication required</span></li>
+        <li><span class="step-num">2</span><strong>Aerosol Species</strong> — Five species are extracted: <span class="source-tag">BCSMASS</span> Black Carbon, <span class="source-tag">DUSMASS</span> Mineral Dust, <span class="source-tag">SSSMASS</span> Sea Salt, <span class="source-tag">OCSMASS</span> Organic Carbon, <span class="source-tag">SO4SMASS</span> Sulfate.</li>
+        <li><span class="step-num">3</span><strong>Aerosol Flux Computation</strong> — Wind vectors are weighted by each species' normalized concentration: <strong>flux = wind × (aerosol / P95)</strong>. This preserves wind direction but scales magnitude by how much aerosol is actually present.</li>
+        <li><span class="step-num">4</span><strong>PNG Encoding</strong> — U and V components are encoded as Red and Green channels (0–255 mapping to [-max, +max]), with magnitude in Blue. Result: ~100 KB per species at 1° resolution.</li>
+        <li><span class="step-num">5</span><strong>Browser Rendering</strong> — A custom Canvas particle system decodes the PNG, spawns thousands of particles, and advects them along the aerosol flux vectors each frame at 60 FPS.</li>
+      </ol>
+
+      <h3>Data Sources</h3>
+      <ul>
+        <li><strong>Wind & Aerosols:</strong> NASA GMAO GEOS-FP 0.25° — <span class="source-tag">opendap.nccs.nasa.gov</span></li>
+        <li><strong>Basemap:</strong> Esri Dark Gray Vector — <span class="source-tag">ArcGIS Maps SDK 5.0</span></li>
+        <li><strong>Processing:</strong> Python (xarray, NumPy, Pillow) — <span class="source-tag">OPeNDAP streaming</span></li>
+      </ul>
+
+      <h3>How to Use</h3>
+      <ul>
+        <li><strong>Switch species</strong> — Click any aerosol type in the left panel to see its unique transport pattern</li>
+        <li><strong>Pan & zoom</strong> — Drag the map or scroll to explore regions. Particles re-spawn to fill the view.</li>
+        <li><strong>Adjust animation</strong> — Use sliders to control particle count, speed, trail length, and line width</li>
+        <li><strong>Interpret colors</strong> — Brighter, denser particle trails = higher aerosol concentration being transported by wind</li>
+      </ul>
+
+      <div class="credit">
+        <p>Created by</p>
+        <strong>Jhonatan Garrido-Lecca</strong>
+        <p style="margin-top:6px;">Powered by NASA GEOS-FP, ArcGIS Maps SDK, and open atmospheric science data.</p>
+      </div>
+
+      <button class="enter-btn" id="enterBtn">Explore the Map</button>
     </div>
   </div>
 
@@ -464,6 +574,11 @@
     document.getElementById("widthSlider").addEventListener("input", e => {
       lineWidth = e.target.value / 10;
       document.getElementById("widthVal").textContent = lineWidth.toFixed(1);
+    });
+
+    // Intro dismiss
+    document.getElementById("enterBtn").addEventListener("click", () => {
+      document.getElementById("intro").classList.add("hidden");
     });
   </script>
 </body>
