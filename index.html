@@ -77,7 +77,6 @@
     #viewDiv { width: 100%; height: 100%; }
     #particleCanvas {
       position: absolute; inset: 0; pointer-events: none; z-index: 2;
-      mix-blend-mode: screen;
     }
 
     .loading {
@@ -264,42 +263,51 @@
     }
 
     // ═══════════════════════════════════════
-    //  Particle system
+    //  Particle system (manual projection)
     // ═══════════════════════════════════════
     const canvas = document.getElementById("particleCanvas");
     const ctx = canvas.getContext("2d");
     let particles = [];
+    let cw = 0, ch = 0;
 
     function resizeCanvas() {
       const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
-      canvas.style.width = rect.width + "px";
-      canvas.style.height = rect.height + "px";
-      ctx.scale(devicePixelRatio, devicePixelRatio);
+      cw = rect.width;
+      ch = rect.height;
+      canvas.width = cw;
+      canvas.height = ch;
+    }
+
+    // Web Mercator projection: lon/lat → screen x/y
+    function project(lon, lat) {
+      const ext = view.extent;
+      if (!ext) return null;
+      const x = ((lon - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
+      const y = (1 - (lat - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
+      return [x, y];
     }
 
     function randomParticle() {
+      const ext = view.extent;
+      if (!ext) return { x: 0, y: 0, age: 0 };
       return {
-        x: Math.random() * 360 - 180,  // lon
-        y: Math.random() * 180 - 90,    // lat
-        age: Math.floor(Math.random() * 100)
+        x: ext.xmin + Math.random() * (ext.xmax - ext.xmin),
+        y: ext.ymin + Math.random() * (ext.ymax - ext.ymin),
+        age: Math.floor(Math.random() * 80)
       };
     }
 
     function initParticles() {
       particles = [];
-      for (let i = 0; i < numParticles; i++) {
-        particles.push(randomParticle());
-      }
+      for (let i = 0; i < numParticles; i++) particles.push(randomParticle());
     }
 
     function getWind(lon, lat) {
       if (!windData) return [0, 0, 0];
-      // Map lon/lat to pixel coords
       let px = ((lon + 180) / 360) * windData.width;
       let py = ((90 - lat) / 180) * windData.height;
       px = Math.floor(px) % windData.width;
+      if (px < 0) px += windData.width;
       py = Math.max(0, Math.min(windData.height - 1, Math.floor(py)));
       const idx = py * windData.width + px;
       return [windData.u[idx], windData.v[idx], windData.mag[idx]];
@@ -307,74 +315,81 @@
 
     function getColor(magnitude) {
       const ramp = COLOR_RAMPS[currentSpecies];
-      const t = Math.min(magnitude / (windData ? windData.maxMag * 0.6 : 1), 1);
+      const t = Math.min(magnitude / (windData ? windData.maxMag * 0.5 : 1), 1);
       const idx = t * (ramp.length - 1);
       const lo = Math.floor(idx);
       const hi = Math.min(lo + 1, ramp.length - 1);
       const f = idx - lo;
       const c = ramp[lo].map((v, i) => Math.round(v + (ramp[hi][i] - v) * f));
-      const alpha = 0.3 + t * 0.7;
+      const alpha = 0.4 + t * 0.6;
       return `rgba(${c[0]},${c[1]},${c[2]},${alpha})`;
     }
 
-    function lonLatToScreen(lon, lat) {
-      const pt = view.toScreen({ longitude: lon, latitude: lat, spatialReference: { wkid: 4326 } });
-      return pt ? [pt.x, pt.y] : null;
+    // Trail image for fade effect
+    let trailCanvas, trailCtx;
+    function initTrail() {
+      trailCanvas = document.createElement("canvas");
+      trailCanvas.width = cw;
+      trailCanvas.height = ch;
+      trailCtx = trailCanvas.getContext("2d");
     }
 
     function animate() {
-      if (!windData) { requestAnimationFrame(animate); return; }
+      if (!windData || !view.extent || cw === 0) { requestAnimationFrame(animate); return; }
 
-      const cw = canvas.width / devicePixelRatio;
-      const ch = canvas.height / devicePixelRatio;
+      if (!trailCanvas || trailCanvas.width !== cw || trailCanvas.height !== ch) {
+        initTrail();
+      }
 
-      // Fade previous frame (trail effect)
-      ctx.globalCompositeOperation = "destination-in";
-      ctx.fillStyle = `rgba(0,0,0,${fadeOpacity})`;
-      ctx.fillRect(0, 0, cw, ch);
-      ctx.globalCompositeOperation = "lighter";
+      // Fade: copy current trails with reduced opacity
+      trailCtx.globalAlpha = fadeOpacity;
+      trailCtx.drawImage(canvas, 0, 0);
 
+      // Clear main canvas and paste faded trails
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(trailCanvas, 0, 0);
+
+      // Clear trail canvas for next frame
+      trailCtx.clearRect(0, 0, cw, ch);
+
+      // Draw new particle segments
       ctx.lineWidth = lineWidth;
       ctx.lineCap = "round";
 
-      const extent = view.extent;
-      if (!extent) { requestAnimationFrame(animate); return; }
+      const ext = view.extent;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         const [u, v, m] = getWind(p.x, p.y);
 
-        if (m < 0.01 || p.age > 100) {
+        if (m < 0.05 || p.age > 80) {
           particles[i] = randomParticle();
-          // Constrain to visible extent
-          particles[i].x = extent.xmin + Math.random() * (extent.xmax - extent.xmin);
-          particles[i].y = extent.ymin + Math.random() * (extent.ymax - extent.ymin);
           continue;
         }
 
-        const oldScreen = lonLatToScreen(p.x, p.y);
-        // Move particle (scale by speed factor, convert m/s to degrees roughly)
-        const scale = speedFactor * 0.02;
+        const from = project(p.x, p.y);
+
+        const scale = speedFactor * 0.03;
         p.x += u * scale;
-        p.y += v * scale;
+        p.y -= v * scale; // V is positive northward, screen Y is flipped
         p.age++;
 
-        // Wrap longitude
+        // Wrap/reset
         if (p.x > 180) p.x -= 360;
         if (p.x < -180) p.x += 360;
         if (p.y > 85 || p.y < -85) { particles[i] = randomParticle(); continue; }
+        if (p.x < ext.xmin || p.x > ext.xmax || p.y < ext.ymin || p.y > ext.ymax) {
+          particles[i] = randomParticle(); continue;
+        }
 
-        const newScreen = lonLatToScreen(p.x, p.y);
-        if (!oldScreen || !newScreen) continue;
+        const to = project(p.x, p.y);
+        if (!from || !to) continue;
+        if (to[0] < -5 || to[0] > cw + 5 || to[1] < -5 || to[1] > ch + 5) continue;
 
-        // Only draw if on screen
-        if (newScreen[0] < -10 || newScreen[0] > cw + 10 || newScreen[1] < -10 || newScreen[1] > ch + 10) continue;
-
-        // Draw trail segment
         ctx.strokeStyle = getColor(m);
         ctx.beginPath();
-        ctx.moveTo(oldScreen[0], oldScreen[1]);
-        ctx.lineTo(newScreen[0], newScreen[1]);
+        ctx.moveTo(from[0], from[1]);
+        ctx.lineTo(to[0], to[1]);
         ctx.stroke();
       }
 
