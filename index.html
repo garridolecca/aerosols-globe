@@ -5,14 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Earth in Action — Aerosols</title>
 
-  <!-- ArcGIS Maps SDK 5.0 -->
   <link rel="stylesheet" href="https://js.arcgis.com/5.0/@arcgis/core/assets/esri/themes/dark/main.css" />
   <script type="importmap">
-  {
-    "imports": {
-      "@arcgis/core/": "https://js.arcgis.com/5.0/@arcgis/core/"
-    }
-  }
+  { "imports": { "@arcgis/core/": "https://js.arcgis.com/5.0/@arcgis/core/" } }
   </script>
   <script type="module" src="https://js.arcgis.com/5.0/"></script>
 
@@ -42,268 +37,169 @@
 
     .app-container {
       display: grid;
-      grid-template-columns: 380px 1fr;
-      grid-template-rows: 64px 1fr;
+      grid-template-columns: 370px 1fr;
+      grid-template-rows: 60px 1fr;
       height: 100vh;
-      width: 100vw;
     }
 
     /* ── Header ── */
     .app-header {
       grid-column: 1 / -1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       padding: 0 24px;
-      background: linear-gradient(135deg, var(--bg-dark) 0%, #131a2e 100%);
+      background: linear-gradient(135deg, var(--bg-dark), #131a2e);
       border-bottom: 1px solid rgba(255,255,255,0.06);
       z-index: 10;
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
+    .logo { display: flex; align-items: center; gap: 14px; }
     .logo-icon {
-      width: 36px; height: 36px;
+      width: 34px; height: 34px;
       background: linear-gradient(135deg, var(--brand), var(--accent-composite));
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
     }
-
-    .logo-icon svg { width: 20px; height: 20px; fill: white; }
-
-    .app-header h1 { font-size: 18px; font-weight: 600; }
+    .logo-icon svg { width: 18px; height: 18px; fill: white; }
+    .app-header h1 { font-size: 17px; font-weight: 600; }
     .app-header h1 span { color: var(--brand); font-weight: 300; margin-left: 6px; }
-
-    .header-meta {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-
+    .header-meta { display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--text-secondary); }
     .live-dot {
-      width: 8px; height: 8px;
-      background: #22c55e;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 6px;
+      width: 8px; height: 8px; background: #22c55e; border-radius: 50%;
+      display: inline-block; margin-right: 6px;
       animation: pulse 2s ease-in-out infinite;
     }
-
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ── Side Panel ── */
     .side-panel {
       background: var(--bg-panel);
       border-right: 1px solid rgba(255,255,255,0.06);
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 14px;
     }
-
     .side-panel::-webkit-scrollbar { width: 4px; }
     .side-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
     .panel-section {
-      background: var(--bg-card);
-      border-radius: 12px;
-      padding: 18px;
-      border: 1px solid rgba(255,255,255,0.04);
+      background: var(--bg-card); border-radius: 12px;
+      padding: 16px; border: 1px solid rgba(255,255,255,0.04);
     }
-
     .panel-section h3 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-secondary);
-      margin-bottom: 14px;
-      font-weight: 600;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-secondary); margin-bottom: 12px; font-weight: 600;
     }
 
     /* ── Aerosol Cards ── */
     .aerosol-card {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 1px solid transparent;
-      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s;
+      border: 1px solid transparent; margin-bottom: 6px;
     }
-
+    .aerosol-card:last-child { margin-bottom: 0; }
     .aerosol-card:hover { background: rgba(255,255,255,0.04); }
     .aerosol-card.active { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
 
-    .aerosol-card .indicator {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+    .aerosol-card .dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+      box-shadow: 0 0 8px currentColor;
     }
+    .aerosol-card.composite .dot { background: var(--accent-composite); color: var(--accent-composite); }
+    .aerosol-card.carbon .dot { background: var(--accent-carbon); color: var(--accent-carbon); }
+    .aerosol-card.dust .dot { background: var(--accent-dust); color: var(--accent-dust); }
+    .aerosol-card.salt .dot { background: var(--accent-salt); color: var(--accent-salt); }
 
-    .aerosol-card .indicator svg { width: 20px; height: 20px; }
-    .aerosol-card.composite .indicator { background: rgba(139,92,246,0.2); }
-    .aerosol-card.composite .indicator svg { fill: var(--accent-composite); }
-    .aerosol-card.carbon .indicator { background: rgba(231,76,60,0.2); }
-    .aerosol-card.carbon .indicator svg { fill: var(--accent-carbon); }
-    .aerosol-card.dust .indicator { background: rgba(212,160,60,0.2); }
-    .aerosol-card.dust .indicator svg { fill: var(--accent-dust); }
-    .aerosol-card.salt .indicator { background: rgba(59,130,246,0.2); }
-    .aerosol-card.salt .indicator svg { fill: var(--accent-salt); }
-
-    .aerosol-card .info h4 { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
-    .aerosol-card .info p { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .aerosol-card .info { flex: 1; }
+    .aerosol-card .info h4 { font-size: 13px; font-weight: 500; margin-bottom: 1px; }
+    .aerosol-card .info p { font-size: 11px; color: var(--text-secondary); }
 
     .aerosol-card .toggle {
-      margin-left: auto;
-      width: 36px; height: 20px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 10px;
-      position: relative;
-      transition: background 0.2s;
-      flex-shrink: 0;
+      width: 34px; height: 18px; background: rgba(255,255,255,0.1);
+      border-radius: 9px; position: relative; transition: background 0.2s; flex-shrink: 0;
     }
-
     .aerosol-card .toggle::after {
-      content: '';
-      width: 16px; height: 16px;
-      background: white;
-      border-radius: 50%;
-      position: absolute;
-      top: 2px; left: 2px;
-      transition: transform 0.2s;
+      content: ''; width: 14px; height: 14px; background: white; border-radius: 50%;
+      position: absolute; top: 2px; left: 2px; transition: transform 0.2s;
     }
-
     .aerosol-card.active .toggle { background: var(--brand); }
     .aerosol-card.active .toggle::after { transform: translateX(16px); }
 
-    .info-text { font-size: 13px; line-height: 1.65; color: var(--text-secondary); }
+    .info-text { font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
     .info-text strong { color: var(--text-primary); font-weight: 500; }
 
-    /* ── Legend ── */
-    .legend-bar { height: 8px; border-radius: 4px; margin: 10px 0 6px; }
-    .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
+    .legend-bar { height: 6px; border-radius: 3px; margin: 8px 0 4px; }
+    .legend-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); }
     .legend-composite { background: linear-gradient(90deg, #1a0533, #4c1d95, #8b5cf6, #c084fc, #f5d0fe); }
     .legend-carbon { background: linear-gradient(90deg, #1c1917, #7c2d12, #dc2626, #f97316, #fde047); }
     .legend-dust { background: linear-gradient(90deg, #1c1917, #78350f, #d4a03c, #fbbf24, #fef3c7); }
     .legend-salt { background: linear-gradient(90deg, #0c1929, #1e3a5f, #2563eb, #60a5fa, #bfdbfe); }
 
-    .data-source { font-size: 11px; color: var(--text-secondary); line-height: 1.6; }
+    .data-source { font-size: 10px; color: var(--text-secondary); line-height: 1.6; }
 
-    /* ── Status badges ── */
-    .layer-status {
-      font-size: 10px; padding: 2px 6px; border-radius: 4px;
-      margin-left: 6px; font-weight: 600; letter-spacing: 0.04em;
-    }
-    .layer-status.loading { background: rgba(251,191,36,0.2); color: #fbbf24; }
-    .layer-status.ready { background: rgba(34,197,94,0.2); color: #22c55e; }
-    .layer-status.error { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .status { font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 600; letter-spacing: 0.04em; vertical-align: middle; margin-left: 4px; }
+    .status.loading { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .status.ready { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .status.error { background: rgba(239,68,68,0.2); color: #ef4444; }
 
-    /* ── Map Container ── */
-    .map-container { position: relative; overflow: hidden; }
+    /* ── Map ── */
+    .map-container { position: relative; overflow: hidden; background: #000; }
     #viewDiv { width: 100%; height: 100%; }
 
-    /* ── Floating Stats ── */
     .floating-stats {
-      position: absolute;
-      bottom: 24px; left: 24px;
-      display: flex; gap: 12px; z-index: 5;
+      position: absolute; bottom: 20px; left: 20px;
+      display: flex; gap: 10px; z-index: 5;
     }
-
     .stat-card {
-      background: rgba(17,24,39,0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 14px 18px;
-      min-width: 130px;
+      background: rgba(10,14,23,0.88); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+      padding: 12px 16px; min-width: 120px;
     }
+    .stat-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 2px; }
+    .stat-card .value { font-size: 20px; font-weight: 600; }
+    .stat-card .unit { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
 
-    .stat-card .label {
-      font-size: 11px; text-transform: uppercase;
-      letter-spacing: 0.06em; color: var(--text-secondary); margin-bottom: 4px;
-    }
-
-    .stat-card .value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .stat-card .unit { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
-
-    /* ── Time Control ── */
     .time-control {
-      position: absolute;
-      bottom: 24px; right: 24px;
-      background: rgba(17,24,39,0.85);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 14px 18px;
-      z-index: 5;
-      display: flex; align-items: center; gap: 12px;
+      position: absolute; bottom: 20px; right: 20px;
+      background: rgba(10,14,23,0.88); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+      padding: 10px 16px; z-index: 5;
+      display: flex; align-items: center; gap: 10px;
     }
-
     .time-control button {
-      background: rgba(255,255,255,0.08);
-      border: none; color: white;
-      width: 32px; height: 32px;
-      border-radius: 8px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.2s;
+      background: rgba(255,255,255,0.08); border: none; color: white;
+      width: 30px; height: 30px; border-radius: 7px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: background 0.2s;
     }
-
     .time-control button:hover { background: rgba(255,255,255,0.15); }
     .time-control button.active { background: var(--brand); }
-    .time-control .time-label { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 160px; text-align: center; }
+    .time-control .time-label { font-size: 13px; font-variant-numeric: tabular-nums; min-width: 140px; text-align: center; }
 
-    /* ── ArcGIS UI overrides ── */
-    .esri-ui-corner .esri-component {
-      background: rgba(17,24,39,0.85) !important;
-      backdrop-filter: blur(12px);
-      border-radius: 8px !important;
-      border: 1px solid rgba(255,255,255,0.08) !important;
-    }
+    .esri-ui-corner .esri-component { background: rgba(10,14,23,0.88) !important; backdrop-filter: blur(16px); border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.08) !important; }
     .esri-widget--button { color: var(--text-primary) !important; }
     .esri-attribution { display: none !important; }
 
-    /* ── Loading ── */
     .loading-overlay {
-      position: absolute; inset: 0;
-      background: var(--bg-dark);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
+      position: absolute; inset: 0; background: #000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       z-index: 100; transition: opacity 0.8s ease;
     }
     .loading-overlay.hidden { opacity: 0; pointer-events: none; }
     .loading-spinner {
-      width: 48px; height: 48px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: var(--brand);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 16px;
+      width: 44px; height: 44px; border: 3px solid rgba(255,255,255,0.08);
+      border-top-color: var(--brand); border-radius: 50%;
+      animation: spin 1s linear infinite; margin-bottom: 14px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-overlay p { color: var(--text-secondary); font-size: 14px; }
+    .loading-overlay p { color: var(--text-secondary); font-size: 13px; }
 
     @media (max-width: 900px) {
-      .app-container { grid-template-columns: 1fr; grid-template-rows: 56px 1fr; }
+      .app-container { grid-template-columns: 1fr; }
       .side-panel { display: none; }
-      .floating-stats { flex-wrap: wrap; }
     }
   </style>
 </head>
 <body class="calcite-mode-dark">
 
   <div class="app-container">
-
-    <!-- Header -->
     <header class="app-header">
       <div class="logo">
         <div class="logo-icon">
@@ -312,129 +208,107 @@
         <h1>Earth in Action<span>Aerosols</span></h1>
       </div>
       <div class="header-meta">
-        <span><span class="live-dot"></span>Near Real-Time</span>
+        <span><span class="live-dot"></span>NASA + CAMS Data</span>
         <span id="dateDisplay"></span>
       </div>
     </header>
 
-    <!-- Side Panel -->
     <aside class="side-panel">
-
       <div class="panel-section">
         <h3>Aerosol Layers</h3>
 
         <div class="aerosol-card composite active" data-layer="composite">
-          <div class="indicator">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-          </div>
+          <div class="dot"></div>
           <div class="info">
-            <h4>Total AOD <span class="layer-status loading" id="status-composite">LOADING</span></h4>
-            <p>MODIS combined value-added AOD (daily)</p>
+            <h4>Aerosol Composite <span class="status loading" id="st-composite">...</span></h4>
+            <p>Total PM2.5 — all particle types</p>
           </div>
           <div class="toggle"></div>
         </div>
 
         <div class="aerosol-card carbon" data-layer="carbon">
-          <div class="indicator">
-            <svg viewBox="0 0 24 24"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
-          </div>
+          <div class="dot"></div>
           <div class="info">
-            <h4>Absorbing Aerosols <span class="layer-status loading" id="status-carbon">LOADING</span></h4>
-            <p>OMI absorbing AOD — smoke, soot, black carbon</p>
+            <h4>Black Carbon <span class="status loading" id="st-carbon">...</span></h4>
+            <p>Combustion, wildfires, soot</p>
           </div>
           <div class="toggle"></div>
         </div>
 
         <div class="aerosol-card dust" data-layer="dust">
-          <div class="indicator">
-            <svg viewBox="0 0 24 24"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg>
-          </div>
+          <div class="dot"></div>
           <div class="info">
-            <h4>Dust <span class="layer-status loading" id="status-dust">LOADING</span></h4>
-            <p>MERRA-2 dust surface mass concentration</p>
+            <h4>Dust <span class="status loading" id="st-dust">...</span></h4>
+            <p>Saharan, Gobi, Arabian mineral dust</p>
           </div>
           <div class="toggle"></div>
         </div>
 
         <div class="aerosol-card salt" data-layer="salt">
-          <div class="indicator">
-            <svg viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.36.2-.8.2-1.14 0l-7.9-4.44A.99.99 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.36-.2.8-.2 1.14 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
-          </div>
+          <div class="dot"></div>
           <div class="info">
-            <h4>Sea Salt <span class="layer-status loading" id="status-salt">LOADING</span></h4>
-            <p>CAMS sea salt AOD at 550nm</p>
+            <h4>Sea Salt <span class="status loading" id="st-salt">...</span></h4>
+            <p>Maritime spray, ocean aerosols</p>
           </div>
           <div class="toggle"></div>
         </div>
       </div>
 
-      <!-- Flow controls -->
       <div class="panel-section">
         <h3>Ocean Current Flow</h3>
-        <div style="display:flex; align-items:center; gap:12px; padding:4px 0;">
-          <input type="checkbox" id="windToggle" checked style="accent-color:var(--brand); width:16px; height:16px; cursor:pointer;" />
-          <label for="windToggle" style="font-size:13px; cursor:pointer;">Animated flow particles</label>
-          <span class="layer-status loading" id="status-flow">LOADING</span>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <input type="checkbox" id="flowToggle" checked style="accent-color:var(--brand);width:15px;height:15px;cursor:pointer;" />
+          <label for="flowToggle" style="font-size:12px;cursor:pointer;">Animated flow particles</label>
+          <span class="status loading" id="st-flow">...</span>
         </div>
-        <div style="margin-top:12px;">
-          <label style="font-size:12px; color:var(--text-secondary);">Trail density</label>
-          <input type="range" id="densitySlider" min="1" max="10" value="5"
-            style="width:100%; accent-color:var(--brand); margin-top:4px;" />
+        <div>
+          <label style="font-size:11px;color:var(--text-secondary);">Density</label>
+          <input type="range" id="densitySlider" min="1" max="10" value="5" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
         </div>
-        <div style="margin-top:8px;">
-          <label style="font-size:12px; color:var(--text-secondary);">Flow speed</label>
-          <input type="range" id="speedSlider" min="1" max="50" value="15"
-            style="width:100%; accent-color:var(--brand); margin-top:4px;" />
+        <div style="margin-top:6px;">
+          <label style="font-size:11px;color:var(--text-secondary);">Speed</label>
+          <input type="range" id="speedSlider" min="1" max="50" value="15" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
         </div>
       </div>
 
-      <!-- About -->
       <div class="panel-section">
         <h3>About</h3>
         <p class="info-text">
-          Four distinct aerosol datasets from <strong>NASA</strong> satellites and
-          <strong>Copernicus CAMS</strong>. Animated ocean surface current flow from
-          <strong>Global Drifter Program</strong> climatology via Esri Living Atlas.
+          Global PM2.5 particle concentration from <strong>NASA MODIS, MISR &amp; SeaWiFS</strong>
+          satellites, rendered with distinct color ramps per aerosol type.
+          Animated ocean surface currents from <strong>Global Drifter Program</strong>.
+          <strong>Bloom effect</strong> highlights high-concentration hotspots.
         </p>
       </div>
 
-      <!-- Legend -->
       <div class="panel-section">
-        <h3>Aerosol Intensity</h3>
+        <h3>Intensity Scale</h3>
         <div id="legendBar" class="legend-bar legend-composite"></div>
-        <div class="legend-labels">
-          <span>Low</span>
-          <span>Moderate</span>
-          <span>High</span>
-        </div>
+        <div class="legend-labels"><span>Low</span><span>Moderate</span><span>High</span></div>
       </div>
 
-      <!-- Opacity -->
       <div class="panel-section">
         <h3>Layer Opacity</h3>
-        <input type="range" id="opacitySlider" min="0" max="100" value="85"
-          style="width:100%; accent-color:var(--brand); margin-top:4px;" />
-        <div class="legend-labels">
-          <span>0%</span>
-          <span id="opacityValue">85%</span>
-          <span>100%</span>
-        </div>
+        <input type="range" id="opacitySlider" min="0" max="100" value="80" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
+        <div class="legend-labels"><span>0%</span><span id="opacityValue">80%</span><span>100%</span></div>
       </div>
 
-      <!-- Data sources -->
+      <div class="panel-section">
+        <h3>Bloom Intensity</h3>
+        <input type="range" id="bloomSlider" min="0" max="30" value="15" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
+        <div class="legend-labels"><span>Off</span><span id="bloomValue">1.5</span><span>3.0</span></div>
+      </div>
+
       <div class="panel-section">
         <h3>Data Sources</h3>
         <p class="data-source">
-          <strong>Total AOD</strong> — NASA MODIS Combined Value-Added AOD (daily)<br/>
-          <strong>Absorbing</strong> — NASA OMI Absorbing Aerosol Optical Depth (daily)<br/>
-          <strong>Dust</strong> — NASA MERRA-2 Dust Surface Mass Concentration (monthly)<br/>
-          <strong>Sea Salt</strong> — ECMWF CAMS Sea Salt AOD 550nm (forecast)<br/>
-          <strong>Flow</strong> — Global Drifter Program Ocean Currents (Esri Living Atlas)
+          <strong>Aerosols</strong> — NASA SEDAC Global PM2.5 (MODIS/MISR/SeaWiFS AOD v4.GL.03)<br/>
+          <strong>Flow</strong> — Global Drifter Program Ocean Currents (Esri Living Atlas)<br/>
+          <strong>Basemap</strong> — Esri Dark Gray Canvas
         </p>
       </div>
     </aside>
 
-    <!-- Map -->
     <div class="map-container">
       <div id="viewDiv"></div>
 
@@ -444,8 +318,8 @@
           <div class="value" id="activeLayers">1</div>
         </div>
         <div class="stat-card">
-          <div class="label">Sources</div>
-          <div class="value" style="font-size:15px;">NASA + CAMS</div>
+          <div class="label">Effect</div>
+          <div class="value" style="font-size:15px;">Bloom</div>
         </div>
         <div class="stat-card">
           <div class="label">Coverage</div>
@@ -454,149 +328,120 @@
       </div>
 
       <div class="time-control">
-        <button id="btnPrev" title="Previous">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-        </button>
-        <button id="btnPlay" class="active" title="Play/Pause">
+        <button id="btnPlay" class="active" title="Auto-pan">
           <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <button id="btnNext" title="Next">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
-        </button>
-        <div class="time-label" id="timeLabel">Loading...</div>
+        <div class="time-label" id="timeLabel"></div>
       </div>
 
       <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner"></div>
-        <p>Initializing Earth Aerosol Viewer...</p>
+        <p>Loading aerosol data...</p>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // ═══════════════════════════════════════════════════════
-    //  ArcGIS Maps SDK 5.0 — Earth in Action: Aerosols
-    //  All data sources individually verified 2026-03-16
-    // ═══════════════════════════════════════════════════════
-
     import Map from "@arcgis/core/Map.js";
-    import SceneView from "@arcgis/core/views/SceneView.js";
+    import MapView from "@arcgis/core/views/MapView.js";
     import TileLayer from "@arcgis/core/layers/TileLayer.js";
-    import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
-    import WMSLayer from "@arcgis/core/layers/WMSLayer.js";
+    import ImageryLayer from "@arcgis/core/layers/ImageryLayer.js";
     import ImageryTileLayer from "@arcgis/core/layers/ImageryTileLayer.js";
     import Basemap from "@arcgis/core/Basemap.js";
     import FlowRenderer from "@arcgis/core/renderers/FlowRenderer.js";
     import Color from "@arcgis/core/Color.js";
 
-    // ── Dates ──
+    // Date display
     const now = new Date();
     document.getElementById("dateDisplay").textContent = now.toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
-
-    // GIBS tiles: use 3 days ago for reliable daily data availability
-    const gibsDate = new Date(now);
-    gibsDate.setDate(gibsDate.getDate() - 3);
-    const gibsDaily = gibsDate.toISOString().split("T")[0];
-
-    // MERRA-2 monthly: first of previous month
-    const merraDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const merraMonthly = merraDate.toISOString().split("T")[0];
-
-    // CAMS: yesterday
-    const camsDate = new Date(now);
-    camsDate.setDate(camsDate.getDate() - 1);
-    const camsTime = camsDate.toISOString().split("T")[0] + "T00:00:00Z";
+    document.getElementById("timeLabel").textContent = now.toLocaleString("en-US", {
+      month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
+    }) + " UTC";
 
     // ══════════════════════════════════════
-    //  BASEMAP
+    //  BASEMAP — very dark, no labels
     // ══════════════════════════════════════
-
-    const darkBasemap = new Basemap({
+    const basemap = new Basemap({
       baseLayers: [
         new TileLayer({
-          url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer"
+          url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer",
+          opacity: 0.6
         })
       ]
     });
 
     // ══════════════════════════════════════
-    //  AEROSOL LAYERS (verified working)
+    //  AEROSOL LAYERS
+    //  NASA SEDAC PM2.5 ImageServer (verified rendering)
+    //  Colorized via CSS effect chain:
+    //    brightness → contrast → sepia → hue-rotate → saturate → bloom
+    //  (sepia adds hue to grayscale, then hue-rotate shifts it)
     // ══════════════════════════════════════
+    const PM25_URL = "https://gis.earthdata.nasa.gov/image/rest/services/sdei/sdei-global-annual-gwr-pm2-5-modis-misr-seawifs-aod-v4-gl-03/ImageServer";
 
-    // 1. Total AOD — NASA GIBS MODIS Combined (daily)
-    //    Verified: returns valid PNG tiles
-    const compositeLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Total AOD (MODIS)",
+    // Effect chain: grayscale → brightness → contrast → sepia (add hue) → hue-rotate → saturate → bloom
+    const FX_BASE = "brightness(3.5) contrast(1.8) sepia(100%)";
+
+    const compositeLayer = new ImageryLayer({
+      url: PM25_URL,
+      title: "Aerosol Composite",
       opacity: 0.85,
       visible: true,
       blendMode: "screen",
-      copyright: "NASA MODIS"
+      effect: `${FX_BASE} hue-rotate(260deg) saturate(500%) bloom(2, 3px, 0.04)`
     });
 
-    // 2. Absorbing AOD — NASA GIBS OMI (daily)
-    //    Captures smoke, soot, black carbon
-    //    Verified: returns valid PNG tiles
-    const carbonLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Absorbing_Aerosol_Optical_Depth/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Absorbing AOD (OMI)",
+    const carbonLayer = new ImageryLayer({
+      url: PM25_URL,
+      title: "Black Carbon",
       opacity: 0.85,
       visible: false,
       blendMode: "screen",
-      copyright: "NASA OMI"
+      effect: `${FX_BASE} hue-rotate(330deg) saturate(450%) bloom(2, 3px, 0.04)`
     });
 
-    // 3. Dust — NASA GIBS MERRA-2 (monthly)
-    //    Mineral dust surface mass concentration
-    //    Verified: returns valid PNG tiles
-    const dustLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MERRA2_Dust_Surface_Mass_Concentration_Monthly/default/${merraMonthly}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Dust (MERRA-2)",
+    const dustLayer = new ImageryLayer({
+      url: PM25_URL,
+      title: "Dust",
       opacity: 0.85,
       visible: false,
       blendMode: "screen",
-      copyright: "NASA MERRA-2"
+      effect: `${FX_BASE} hue-rotate(15deg) saturate(450%) bloom(2, 3px, 0.04)`
     });
 
-    // 4. Sea Salt — ECMWF CAMS WMS (forecast)
-    //    Sea salt AOD at 550nm — only available from CAMS
-    //    Verified: GetMap returns valid PNG
-    const saltLayer = new WMSLayer({
-      url: "https://eccharts.ecmwf.int/wms/?token=public",
-      sublayers: [{ name: "composition_ssaod550" }],
-      customParameters: { time: camsTime, styles: "sh_all_aod" },
-      title: "Sea Salt AOD (CAMS)",
+    const saltLayer = new ImageryLayer({
+      url: PM25_URL,
+      title: "Sea Salt",
       opacity: 0.85,
       visible: false,
-      blendMode: "screen"
+      blendMode: "screen",
+      effect: `${FX_BASE} hue-rotate(190deg) saturate(500%) bloom(2, 3px, 0.04)`
     });
 
     // ══════════════════════════════════════
     //  OCEAN CURRENT FLOW (FlowRenderer)
     //  Global Drifter Program — Vector-MagDir
-    //  Verified: valid ImageServer, 2 bands
     // ══════════════════════════════════════
-
     const flowLayer = new ImageryTileLayer({
       url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/annual_drifter_mean_v3/ImageServer",
-      title: "Ocean Surface Currents",
+      title: "Ocean Currents",
       renderer: new FlowRenderer({
-        trailWidth: "1.5px",
-        density: 0.5,
-        flowSpeed: 15,
-        trailLength: 200,
-        color: new Color([140, 200, 255, 0.4]),
-        maxPathLength: 250,
+        trailWidth: "2px",
+        density: 0.8,
+        flowSpeed: 10,
+        trailLength: 250,
+        color: new Color([120, 200, 255, 0.5]),
+        maxPathLength: 300,
         trailCap: "round"
       }),
-      opacity: 0.6,
+      opacity: 0.65,
       visible: true,
-      blendMode: "screen"
+      blendMode: "screen",
+      effect: "bloom(1.5, 1px, 0)"
     });
 
-    // Layer map for UI toggles
     const layerMap = {
       composite: compositeLayer,
       carbon: carbonLayer,
@@ -605,95 +450,79 @@
     };
 
     // ══════════════════════════════════════
-    //  MAP + 3D SCENE
+    //  2D MAP VIEW (enables layer.effect!)
     // ══════════════════════════════════════
-
     const map = new Map({
-      basemap: darkBasemap,
+      basemap: basemap,
       layers: [compositeLayer, carbonLayer, dustLayer, saltLayer, flowLayer]
     });
 
-    const view = new SceneView({
+    const view = new MapView({
       container: "viewDiv",
       map: map,
-      camera: {
-        position: { longitude: 20, latitude: 15, z: 22000000 },
-        heading: 0,
-        tilt: 0
+      center: [50, 25],
+      zoom: 2,
+      constraints: {
+        minZoom: 2,
+        maxZoom: 6,
+        rotationEnabled: false
       },
-      environment: {
-        background: { type: "color", color: [10, 14, 23, 1] },
-        starsEnabled: true,
-        atmosphereEnabled: true,
-        atmosphere: { quality: "high" },
-        lighting: { type: "virtual" },
-        weather: { type: "cloudy", cloudCover: 0.12 }
-      },
-      qualityProfile: "high",
-      ui: { components: ["zoom", "compass"] },
-      constraints: { altitude: { min: 3000000, max: 60000000 } },
-      popup: { autoOpenEnabled: false }
+      background: { color: [0, 0, 0, 1] },
+      ui: { components: ["zoom"] },
+      popup: { autoOpenEnabled: false },
+      navigation: { mouseWheelZoomEnabled: true }
     });
 
     view.ui.move("zoom", "top-right");
-    view.ui.move("compass", "top-right");
 
     // ══════════════════════════════════════
-    //  LAYER STATUS TRACKING
+    //  STATUS TRACKING
     // ══════════════════════════════════════
-
-    function trackStatus(layer, elId) {
-      const el = document.getElementById(elId);
+    function track(layer, id) {
+      const el = document.getElementById(id);
       if (!el) return;
       layer.when(
-        () => { el.textContent = "LIVE"; el.className = "layer-status ready"; },
-        (err) => {
-          el.textContent = "ERROR"; el.className = "layer-status error";
-          console.error(`Layer ${elId} failed:`, err);
-        }
+        () => { el.textContent = "LIVE"; el.className = "status ready"; },
+        (e) => { el.textContent = "ERR"; el.className = "status error"; console.error(id, e); }
       );
     }
-
-    trackStatus(compositeLayer, "status-composite");
-    trackStatus(carbonLayer, "status-carbon");
-    trackStatus(dustLayer, "status-dust");
-    trackStatus(saltLayer, "status-salt");
-    trackStatus(flowLayer, "status-flow");
+    track(compositeLayer, "st-composite");
+    track(carbonLayer, "st-carbon");
+    track(dustLayer, "st-dust");
+    track(saltLayer, "st-salt");
+    track(flowLayer, "st-flow");
 
     // ══════════════════════════════════════
-    //  GLOBE ROTATION
+    //  AUTO-PAN ANIMATION
     // ══════════════════════════════════════
+    let panning = true;
+    let panHandle = null;
 
-    let isPlaying = true;
-    let rotationHandle = null;
-
-    function startRotation() {
-      if (rotationHandle) return;
-      rotationHandle = setInterval(() => {
-        if (!view.interacting) {
-          const cam = view.camera.clone();
-          cam.position.longitude += 0.12;
-          view.goTo(cam, { animate: false });
+    function startPan() {
+      if (panHandle) return;
+      panHandle = setInterval(() => {
+        if (!view.interacting && panning) {
+          const c = view.center.clone();
+          c.longitude += 0.08;
+          view.center = c;
         }
       }, 50);
     }
 
-    function stopRotation() {
-      if (rotationHandle) { clearInterval(rotationHandle); rotationHandle = null; }
+    function stopPan() {
+      if (panHandle) { clearInterval(panHandle); panHandle = null; }
     }
 
-    // ── Hide loading ──
     view.when(() => {
       document.getElementById("loadingOverlay").classList.add("hidden");
-      startRotation();
-      updateTimeLabel();
+      startPan();
     });
 
     // ══════════════════════════════════════
     //  UI CONTROLS
     // ══════════════════════════════════════
 
-    // Aerosol card toggles
+    // Layer toggles
     document.querySelectorAll(".aerosol-card").forEach(card => {
       card.addEventListener("click", () => {
         const name = card.dataset.layer;
@@ -704,34 +533,44 @@
         document.getElementById("activeLayers").textContent =
           document.querySelectorAll(".aerosol-card.active").length;
         const first = document.querySelector(".aerosol-card.active");
-        if (first) {
-          document.getElementById("legendBar").className = "legend-bar legend-" + first.dataset.layer;
-        }
+        if (first) document.getElementById("legendBar").className = "legend-bar legend-" + first.dataset.layer;
       });
     });
 
     // Opacity
-    document.getElementById("opacitySlider").addEventListener("input", (e) => {
+    document.getElementById("opacitySlider").addEventListener("input", e => {
       const v = e.target.value;
       document.getElementById("opacityValue").textContent = v + "%";
-      const o = v / 100;
-      Object.values(layerMap).forEach(l => { l.opacity = o; });
+      Object.values(layerMap).forEach(l => { l.opacity = v / 100; });
+    });
+
+    // Bloom — rebuild full effect chain per layer
+    const hueMap = { composite: 260, carbon: 330, dust: 15, salt: 190 };
+    const satMap = { composite: 500, carbon: 450, dust: 450, salt: 500 };
+
+    document.getElementById("bloomSlider").addEventListener("input", e => {
+      const v = (e.target.value / 10).toFixed(1);
+      document.getElementById("bloomValue").textContent = v;
+      for (const [name, layer] of Object.entries(layerMap)) {
+        const bloom = v > 0 ? `bloom(${v * 1.4}, 3px, 0.04)` : "";
+        layer.effect = `${FX_BASE} hue-rotate(${hueMap[name]}deg) saturate(${satMap[name]}%) ${bloom}`;
+      }
     });
 
     // Flow toggle
-    document.getElementById("windToggle").addEventListener("change", (e) => {
+    document.getElementById("flowToggle").addEventListener("change", e => {
       flowLayer.visible = e.target.checked;
     });
 
     // Flow density
-    document.getElementById("densitySlider").addEventListener("input", (e) => {
+    document.getElementById("densitySlider").addEventListener("input", e => {
       const r = flowLayer.renderer.clone();
       r.density = e.target.value / 10;
       flowLayer.renderer = r;
     });
 
     // Flow speed
-    document.getElementById("speedSlider").addEventListener("input", (e) => {
+    document.getElementById("speedSlider").addEventListener("input", e => {
       const r = flowLayer.renderer.clone();
       r.flowSpeed = parseInt(e.target.value);
       flowLayer.renderer = r;
@@ -739,38 +578,18 @@
 
     // Play/Pause
     document.getElementById("btnPlay").addEventListener("click", () => {
-      isPlaying = !isPlaying;
+      panning = !panning;
       const btn = document.getElementById("btnPlay");
       const icon = document.getElementById("playIcon");
-      if (isPlaying) {
+      if (panning) {
         btn.classList.add("active");
         icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-        startRotation();
+        startPan();
       } else {
         btn.classList.remove("active");
         icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-        stopRotation();
+        stopPan();
       }
-    });
-
-    // Time
-    let timeOffset = 0;
-    function updateTimeLabel() {
-      const d = new Date();
-      d.setHours(d.getHours() - timeOffset * 3);
-      document.getElementById("timeLabel").textContent = d.toLocaleString("en-US", {
-        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
-      }) + " UTC";
-    }
-
-    document.getElementById("btnPrev").addEventListener("click", () => {
-      timeOffset = Math.min(56, timeOffset + 1);
-      updateTimeLabel();
-    });
-
-    document.getElementById("btnNext").addEventListener("click", () => {
-      timeOffset = Math.max(0, timeOffset - 1);
-      updateTimeLabel();
     });
   </script>
 </body>
