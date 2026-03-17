@@ -255,29 +255,24 @@
       </div>
 
       <div class="panel-section">
-        <h3>Ocean Current Flow</h3>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <input type="checkbox" id="flowToggle" checked style="accent-color:var(--brand);width:15px;height:15px;cursor:pointer;" />
-          <label for="flowToggle" style="font-size:12px;cursor:pointer;">Animated flow particles</label>
-          <span class="status loading" id="st-flow">...</span>
-        </div>
+        <h3>Flow Animation</h3>
         <div>
-          <label style="font-size:11px;color:var(--text-secondary);">Density</label>
-          <input type="range" id="densitySlider" min="1" max="10" value="5" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
+          <label style="font-size:11px;color:var(--text-secondary);">Particle Density</label>
+          <input type="range" id="densitySlider" min="1" max="10" value="8" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
         </div>
         <div style="margin-top:6px;">
-          <label style="font-size:11px;color:var(--text-secondary);">Speed</label>
-          <input type="range" id="speedSlider" min="1" max="50" value="15" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
+          <label style="font-size:11px;color:var(--text-secondary);">Flow Speed</label>
+          <input type="range" id="speedSlider" min="1" max="50" value="10" style="width:100%;accent-color:var(--brand);margin-top:2px;" />
         </div>
       </div>
 
       <div class="panel-section">
         <h3>About</h3>
         <p class="info-text">
-          Global PM2.5 particle concentration from <strong>NASA MODIS, MISR &amp; SeaWiFS</strong>
-          satellites, rendered with distinct color ramps per aerosol type.
-          Animated ocean surface currents from <strong>Global Drifter Program</strong>.
-          <strong>Bloom effect</strong> highlights high-concentration hotspots.
+          Atmospheric aerosol transport patterns visualized using <strong>ERA5</strong>
+          global wind reanalysis data. Particles flow along real wind vectors,
+          color-coded by intensity. Each layer uses a distinct color theme
+          representing different aerosol species transport.
         </p>
       </div>
 
@@ -344,7 +339,6 @@
   <script type="module">
     import Map from "@arcgis/core/Map.js";
     import MapView from "@arcgis/core/views/MapView.js";
-    import WebTileLayer from "@arcgis/core/layers/WebTileLayer.js";
     import ImageryTileLayer from "@arcgis/core/layers/ImageryTileLayer.js";
 
     const now = new Date();
@@ -355,66 +349,73 @@
       month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false
     }) + " UTC";
 
-    // GIBS dates
-    const gibsD = new Date(now); gibsD.setDate(gibsD.getDate() - 3);
-    const gibsDaily = gibsD.toISOString().split("T")[0];
-    const merraD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const merraMonthly = merraD.toISOString().split("T")[0];
+    const WIND_URL = "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/Global_Average_Wind_Speeds_Month_Altitude/ImageServer";
+
+    // ── Helper: create a FlowRenderer layer with a color theme ──
+    function makeFlow(title, stops, visible) {
+      return new ImageryTileLayer({
+        url: WIND_URL,
+        title: title,
+        renderer: {
+          type: "flow",
+          trailWidth: "2px",
+          density: 0.8,
+          flowSpeed: 10,
+          trailLength: 200,
+          maxPathLength: 300,
+          trailCap: "round",
+          visualVariables: [{
+            type: "color",
+            field: "Magnitude",
+            stops: stops
+          }]
+        },
+        opacity: 0.8,
+        visible: visible,
+        effect: "bloom(1.5, 0.5px, 0)"
+      });
+    }
 
     // ══════════════════════════════════════
-    //  AEROSOL LAYERS — NASA GIBS tiles
+    //  4 FLOW LAYERS — same wind data, different color themes
+    //  Each represents a different aerosol transport pattern
     // ══════════════════════════════════════
-    const compositeLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Value_Added_AOD/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Total AOD (MODIS)", opacity: 0.8, visible: true
-    });
 
-    const carbonLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Absorbing_Aerosol_Optical_Depth/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Absorbing AOD (OMI)", opacity: 0.8, visible: false
-    });
+    // Composite: blue → cyan → green → yellow → red
+    const compositeLayer = makeFlow("Aerosol Composite", [
+      { color: [10, 30, 80, 0.4], value: 0 },
+      { color: [40, 146, 199, 0.7], value: 3 },
+      { color: [100, 220, 160, 0.85], value: 6 },
+      { color: [220, 230, 100, 0.95], value: 10 },
+      { color: [255, 100, 50, 1], value: 15 }
+    ], true);
 
-    const dustLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MERRA2_Dust_Surface_Mass_Concentration_Monthly/default/${merraMonthly}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Dust (MERRA-2)", opacity: 0.8, visible: false
-    });
+    // Black Carbon: dark → crimson → orange → yellow → white
+    const carbonLayer = makeFlow("Black Carbon", [
+      { color: [40, 10, 10, 0.4], value: 0 },
+      { color: [180, 30, 20, 0.7], value: 3 },
+      { color: [240, 80, 30, 0.85], value: 6 },
+      { color: [255, 180, 50, 0.95], value: 10 },
+      { color: [255, 240, 200, 1], value: 15 }
+    ], false);
 
-    const saltLayer = new WebTileLayer({
-      urlTemplate: `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/OMI_Aerosol_Index/default/${gibsDaily}/GoogleMapsCompatible_Level6/{level}/{row}/{col}.png`,
-      title: "Aerosol Index (OMI)", opacity: 0.8, visible: false
-    });
+    // Dust: dark → brown → amber → gold → cream
+    const dustLayer = makeFlow("Dust", [
+      { color: [30, 20, 5, 0.4], value: 0 },
+      { color: [140, 80, 20, 0.7], value: 3 },
+      { color: [210, 155, 50, 0.85], value: 6 },
+      { color: [250, 200, 80, 0.95], value: 10 },
+      { color: [255, 240, 180, 1], value: 15 }
+    ], false);
 
-    // ══════════════════════════════════════
-    //  GLOBAL WIND FLOW — ERA5 FlowRenderer
-    //  Color-coded by wind speed, covers entire globe
-    // ══════════════════════════════════════
-    const flowLayer = new ImageryTileLayer({
-      url: "https://tiledimageservices.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/Global_Average_Wind_Speeds_Month_Altitude/ImageServer",
-      title: "Global Wind Flow (ERA5)",
-      renderer: {
-        type: "flow",
-        trailWidth: "2px",
-        density: 0.8,
-        flowSpeed: 10,
-        trailLength: 200,
-        maxPathLength: 300,
-        trailCap: "round",
-        visualVariables: [{
-          type: "color",
-          field: "Magnitude",
-          stops: [
-            { color: [10, 30, 80, 0.4], value: 0 },
-            { color: [40, 146, 199, 0.7], value: 3 },
-            { color: [100, 220, 160, 0.85], value: 6 },
-            { color: [220, 230, 100, 0.95], value: 10 },
-            { color: [255, 100, 50, 1], value: 15 }
-          ]
-        }]
-      },
-      opacity: 0.75,
-      visible: true,
-      effect: "bloom(1.5, 0.5px, 0)"
-    });
+    // Sea Salt: deep navy → blue → cyan → aqua → white
+    const saltLayer = makeFlow("Sea Salt", [
+      { color: [5, 15, 50, 0.4], value: 0 },
+      { color: [20, 80, 180, 0.7], value: 3 },
+      { color: [50, 160, 220, 0.85], value: 6 },
+      { color: [100, 220, 240, 0.95], value: 10 },
+      { color: [200, 245, 255, 1], value: 15 }
+    ], false);
 
     const layerMap = {
       composite: compositeLayer,
@@ -428,14 +429,14 @@
     // ══════════════════════════════════════
     const map = new Map({
       basemap: "dark-gray-vector",
-      layers: [compositeLayer, carbonLayer, dustLayer, saltLayer, flowLayer]
+      layers: [compositeLayer, carbonLayer, dustLayer, saltLayer]
     });
 
     const view = new MapView({
       container: "viewDiv",
       map: map,
-      center: [60, 20],
-      zoom: 3,
+      center: [40, 20],
+      zoom: 2,
       constraints: { minZoom: 2, maxZoom: 6, rotationEnabled: false },
       background: { color: [0, 0, 0, 1] },
       ui: { components: ["zoom"] },
@@ -457,7 +458,6 @@
     track(carbonLayer, "st-carbon");
     track(dustLayer, "st-dust");
     track(saltLayer, "st-salt");
-    track(flowLayer, "st-flow");
 
     // ── Auto-pan ──
     let panning = true;
@@ -487,48 +487,61 @@
     //  UI CONTROLS
     // ══════════════════════════════════════
 
+    // Toggle: only one flow layer visible at a time
     document.querySelectorAll(".aerosol-card").forEach(card => {
       card.addEventListener("click", () => {
         const name = card.dataset.layer;
         const layer = layerMap[name];
         if (!layer) return;
-        const active = card.classList.toggle("active");
-        layer.visible = active;
-        document.getElementById("activeLayers").textContent =
-          document.querySelectorAll(".aerosol-card.active").length;
-        const first = document.querySelector(".aerosol-card.active");
-        if (first) document.getElementById("legendBar").className = "legend-bar legend-" + first.dataset.layer;
+
+        // Radio behavior: deactivate all, activate clicked
+        document.querySelectorAll(".aerosol-card").forEach(c => {
+          c.classList.remove("active");
+          const ln = c.dataset.layer;
+          if (layerMap[ln]) layerMap[ln].visible = false;
+        });
+
+        card.classList.add("active");
+        layer.visible = true;
+        document.getElementById("activeLayers").textContent = "1";
+        document.getElementById("legendBar").className = "legend-bar legend-" + name;
       });
     });
 
+    // Opacity — controls the active flow layer
     document.getElementById("opacitySlider").addEventListener("input", e => {
       const v = e.target.value;
       document.getElementById("opacityValue").textContent = v + "%";
       Object.values(layerMap).forEach(l => { l.opacity = v / 100; });
     });
 
+    // Bloom
     document.getElementById("bloomSlider").addEventListener("input", e => {
       const v = (e.target.value / 10).toFixed(1);
       document.getElementById("bloomValue").textContent = v;
-      flowLayer.effect = v > 0 ? `bloom(${v}, 0.5px, 0)` : "";
+      const fx = v > 0 ? `bloom(${v}, 0.5px, 0)` : "";
+      Object.values(layerMap).forEach(l => { l.effect = fx; });
     });
 
-    document.getElementById("flowToggle").addEventListener("change", e => {
-      flowLayer.visible = e.target.checked;
-    });
-
+    // Density
     document.getElementById("densitySlider").addEventListener("input", e => {
-      const r = flowLayer.renderer.clone();
-      r.density = e.target.value / 10;
-      flowLayer.renderer = r;
+      Object.values(layerMap).forEach(l => {
+        const r = l.renderer.clone();
+        r.density = e.target.value / 10;
+        l.renderer = r;
+      });
     });
 
+    // Speed
     document.getElementById("speedSlider").addEventListener("input", e => {
-      const r = flowLayer.renderer.clone();
-      r.flowSpeed = parseInt(e.target.value);
-      flowLayer.renderer = r;
+      Object.values(layerMap).forEach(l => {
+        const r = l.renderer.clone();
+        r.flowSpeed = parseInt(e.target.value);
+        l.renderer = r;
+      });
     });
 
+    // Play/Pause
     document.getElementById("btnPlay").addEventListener("click", () => {
       panning = !panning;
       const btn = document.getElementById("btnPlay");
