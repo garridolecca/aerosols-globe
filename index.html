@@ -5,11 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Earth in Action — Aerosols</title>
 
-  <!-- ArcGIS Maps SDK 4.31 + Calcite -->
-  <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/dark/main.css" />
-  <script src="https://js.arcgis.com/4.31/"></script>
-  <script type="module" src="https://js.arcgis.com/calcite-components/2.13.2/calcite.esm.js"></script>
-  <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/2.13.2/calcite.css" />
+  <!-- ArcGIS Maps SDK 5.0 (unified CDN: core + calcite + components) -->
+  <link rel="stylesheet" href="https://js.arcgis.com/5.0/@arcgis/core/assets/esri/themes/dark/main.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "@arcgis/core/": "https://js.arcgis.com/5.0/@arcgis/core/"
+    }
+  }
+  </script>
+  <script type="module" src="https://js.arcgis.com/5.0/"></script>
 
   <style>
     :root {
@@ -36,7 +41,7 @@
       overflow: hidden;
     }
 
-    /* App Layout */
+    /* ── App Layout ── */
     .app-container {
       display: grid;
       grid-template-columns: 380px 1fr;
@@ -45,7 +50,7 @@
       width: 100vw;
     }
 
-    /* Header */
+    /* ── Header ── */
     .app-header {
       grid-column: 1 / -1;
       display: flex;
@@ -106,7 +111,7 @@
       50% { opacity: 0.3; }
     }
 
-    /* Side Panel */
+    /* ── Side Panel ── */
     .side-panel {
       background: var(--bg-panel);
       border-right: 1px solid rgba(255,255,255,0.06);
@@ -136,7 +141,7 @@
       font-weight: 600;
     }
 
-    /* Aerosol Type Cards */
+    /* ── Aerosol Type Cards ── */
     .aerosol-card {
       display: flex;
       align-items: center;
@@ -149,9 +154,7 @@
       margin-bottom: 8px;
     }
 
-    .aerosol-card:hover {
-      background: rgba(255,255,255,0.04);
-    }
+    .aerosol-card:hover { background: rgba(255,255,255,0.04); }
 
     .aerosol-card.active {
       background: rgba(255,255,255,0.06);
@@ -165,43 +168,21 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      position: relative;
-      overflow: hidden;
     }
 
-    .aerosol-card .indicator::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      opacity: 0.15;
-      border-radius: inherit;
-    }
-
-    .aerosol-card .indicator svg { width: 20px; height: 20px; position: relative; z-index: 1; }
+    .aerosol-card .indicator svg { width: 20px; height: 20px; }
 
     .aerosol-card.composite .indicator { background: rgba(139,92,246,0.2); }
     .aerosol-card.composite .indicator svg { fill: var(--accent-composite); }
-
     .aerosol-card.carbon .indicator { background: rgba(231,76,60,0.2); }
     .aerosol-card.carbon .indicator svg { fill: var(--accent-carbon); }
-
     .aerosol-card.dust .indicator { background: rgba(212,160,60,0.2); }
     .aerosol-card.dust .indicator svg { fill: var(--accent-dust); }
-
     .aerosol-card.salt .indicator { background: rgba(59,130,246,0.2); }
     .aerosol-card.salt .indicator svg { fill: var(--accent-salt); }
 
-    .aerosol-card .info h4 {
-      font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 2px;
-    }
-
-    .aerosol-card .info p {
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.4;
-    }
+    .aerosol-card .info h4 { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .aerosol-card .info p { font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
 
     .aerosol-card .toggle {
       margin-left: auto;
@@ -226,7 +207,7 @@
     .aerosol-card.active .toggle { background: var(--brand); }
     .aerosol-card.active .toggle::after { transform: translateX(16px); }
 
-    /* Info Description */
+    /* ── Info Text ── */
     .info-text {
       font-size: 13px;
       line-height: 1.65;
@@ -235,7 +216,7 @@
 
     .info-text strong { color: var(--text-primary); font-weight: 500; }
 
-    /* Legend */
+    /* ── Legend ── */
     .legend-bar {
       height: 8px;
       border-radius: 4px;
@@ -254,7 +235,7 @@
     .legend-dust { background: linear-gradient(90deg, #1c1917, #78350f, #d4a03c, #fbbf24, #fef3c7); }
     .legend-salt { background: linear-gradient(90deg, #0c1929, #1e3a5f, #2563eb, #60a5fa, #bfdbfe); }
 
-    /* Data Source */
+    /* ── Data Source ── */
     .data-source {
       font-size: 11px;
       color: var(--text-secondary);
@@ -263,9 +244,27 @@
       line-height: 1.6;
     }
 
-    .data-source a { color: var(--brand); text-decoration: none; }
+    /* ── Wind toggle ── */
+    .wind-toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0 0;
+    }
 
-    /* Map Container */
+    .wind-toggle label {
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .wind-toggle input[type="checkbox"] {
+      accent-color: var(--brand);
+      width: 16px; height: 16px;
+      cursor: pointer;
+    }
+
+    /* ── Map Container ── */
     .map-container {
       position: relative;
       overflow: hidden;
@@ -276,7 +275,7 @@
       height: 100%;
     }
 
-    /* Floating Stats */
+    /* ── Floating Stats ── */
     .floating-stats {
       position: absolute;
       bottom: 24px;
@@ -315,7 +314,7 @@
       font-weight: 400;
     }
 
-    /* Floating Time Control */
+    /* ── Floating Time Control ── */
     .time-control {
       position: absolute;
       bottom: 24px;
@@ -354,12 +353,31 @@
       text-align: center;
     }
 
-    /* Remove default ArcGIS UI clutter */
-    .esri-ui-corner .esri-component { background: rgba(17,24,39,0.85) !important; backdrop-filter: blur(12px); border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.08) !important; }
+    /* ── Layer status badges ── */
+    .layer-status {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .layer-status.loading { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .layer-status.ready { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .layer-status.error { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+    /* ── Clean up ArcGIS UI chrome ── */
+    .esri-ui-corner .esri-component {
+      background: rgba(17,24,39,0.85) !important;
+      backdrop-filter: blur(12px);
+      border-radius: 8px !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+    }
     .esri-widget--button { color: var(--text-primary) !important; }
     .esri-attribution { display: none !important; }
 
-    /* Loading overlay */
+    /* ── Loading overlay ── */
     .loading-overlay {
       position: absolute;
       inset: 0;
@@ -369,7 +387,7 @@
       align-items: center;
       justify-content: center;
       z-index: 100;
-      transition: opacity 0.6s ease;
+      transition: opacity 0.8s ease;
     }
 
     .loading-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -387,7 +405,7 @@
 
     .loading-overlay p { color: var(--text-secondary); font-size: 14px; }
 
-    /* Responsive */
+    /* ── Responsive ── */
     @media (max-width: 900px) {
       .app-container {
         grid-template-columns: 1fr;
@@ -411,7 +429,7 @@
         <h1>Earth in Action<span>Aerosols</span></h1>
       </div>
       <div class="header-meta">
-        <span><span class="live-dot"></span>Near Real-Time Data</span>
+        <span><span class="live-dot"></span>CAMS Forecast Data</span>
         <span id="dateDisplay"></span>
       </div>
     </header>
@@ -423,48 +441,71 @@
       <div class="panel-section">
         <h3>Aerosol Layers</h3>
 
-        <div class="aerosol-card composite active" data-layer="composite" onclick="toggleLayer(this)">
+        <div class="aerosol-card composite active" data-layer="composite">
           <div class="indicator">
             <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
           </div>
           <div class="info">
-            <h4>Aerosol Composite</h4>
-            <p>Combined view of all particles</p>
+            <h4>Aerosol Composite <span class="layer-status loading" id="status-composite">LOADING</span></h4>
+            <p>Total AOD at 550nm — all species</p>
           </div>
           <div class="toggle"></div>
         </div>
 
-        <div class="aerosol-card carbon" data-layer="carbon" onclick="toggleLayer(this)">
+        <div class="aerosol-card carbon" data-layer="carbon">
           <div class="indicator">
             <svg viewBox="0 0 24 24"><path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
           </div>
           <div class="info">
-            <h4>Black Carbon</h4>
-            <p>Combustion & wildfire emissions</p>
+            <h4>Black Carbon <span class="layer-status loading" id="status-carbon">LOADING</span></h4>
+            <p>Biomass burning AOD — fires &amp; combustion</p>
           </div>
           <div class="toggle"></div>
         </div>
 
-        <div class="aerosol-card dust" data-layer="dust" onclick="toggleLayer(this)">
+        <div class="aerosol-card dust" data-layer="dust">
           <div class="indicator">
             <svg viewBox="0 0 24 24"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg>
           </div>
           <div class="info">
-            <h4>Dust</h4>
-            <p>Wind-lofted desert particles</p>
+            <h4>Dust <span class="layer-status loading" id="status-dust">LOADING</span></h4>
+            <p>Mineral dust AOD — Sahara, Gobi, Arabian</p>
           </div>
           <div class="toggle"></div>
         </div>
 
-        <div class="aerosol-card salt" data-layer="salt" onclick="toggleLayer(this)">
+        <div class="aerosol-card salt" data-layer="salt">
           <div class="indicator">
             <svg viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.36.2-.8.2-1.14 0l-7.9-4.44A.99.99 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.36-.2.8-.2 1.14 0l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
           </div>
           <div class="info">
-            <h4>Sea Salt</h4>
-            <p>Ocean spray & maritime aerosols</p>
+            <h4>Sea Salt <span class="layer-status loading" id="status-salt">LOADING</span></h4>
+            <p>Maritime aerosol AOD — ocean spray</p>
           </div>
           <div class="toggle"></div>
+        </div>
+      </div>
+
+      <!-- Wind Flow Toggle -->
+      <div class="panel-section">
+        <h3>Atmospheric Flow</h3>
+        <div class="wind-toggle">
+          <input type="checkbox" id="windToggle" checked />
+          <label for="windToggle">Animated wind particle trails</label>
+        </div>
+        <p class="info-text" style="margin-top:10px; font-size:12px;">
+          Shows real-time atmospheric circulation patterns using
+          <strong>FlowRenderer</strong> on global wind data.
+        </p>
+        <div style="margin-top:12px;">
+          <label style="font-size:12px; color:var(--text-secondary);">Trail density</label>
+          <input type="range" id="densitySlider" min="1" max="10" value="5"
+            style="width:100%; accent-color:var(--brand); margin-top:4px;" />
+        </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:12px; color:var(--text-secondary);">Flow speed</label>
+          <input type="range" id="speedSlider" min="1" max="50" value="15"
+            style="width:100%; accent-color:var(--brand); margin-top:4px;" />
         </div>
       </div>
 
@@ -472,14 +513,14 @@
       <div class="panel-section">
         <h3>About This Visualization</h3>
         <p class="info-text">
-          This globe shows a composite view of common atmospheric aerosols including
-          <strong>black carbon</strong>, <strong>dust</strong>, and <strong>sea salt</strong>
-          using near real-time satellite imagery and modeled data.
+          Real atmospheric aerosol data from the <strong>Copernicus Atmosphere Monitoring Service (CAMS)</strong>
+          global forecast model, displayed as Aerosol Optical Depth (AOD) at 550nm.
         </p>
         <br />
         <p class="info-text">
-          Aerosols are tiny solid particles and liquid droplets suspended in Earth's atmosphere.
-          They influence climate by scattering and absorbing sunlight and by modifying cloud properties.
+          Each layer shows a <strong>distinct aerosol species</strong>:
+          total composite, biomass burning (black carbon), mineral dust, and sea salt.
+          Wind flow particles show atmospheric circulation from <strong>GFS</strong> reanalysis.
         </p>
       </div>
 
@@ -488,21 +529,20 @@
         <h3>Aerosol Optical Depth</h3>
         <div id="legendBar" class="legend-bar legend-composite"></div>
         <div class="legend-labels">
-          <span>Low</span>
-          <span>Moderate</span>
-          <span>High</span>
+          <span>0.0</span>
+          <span>0.5</span>
+          <span>1.0+</span>
         </div>
       </div>
 
       <!-- Opacity Control -->
       <div class="panel-section">
         <h3>Layer Opacity</h3>
-        <input type="range" id="opacitySlider" min="0" max="100" value="75"
-          style="width:100%; accent-color: var(--brand); margin-top: 4px;"
-          oninput="updateOpacity(this.value)" />
+        <input type="range" id="opacitySlider" min="0" max="100" value="80"
+          style="width:100%; accent-color: var(--brand); margin-top: 4px;" />
         <div class="legend-labels">
           <span>0%</span>
-          <span id="opacityValue">75%</span>
+          <span id="opacityValue">80%</span>
           <span>100%</span>
         </div>
       </div>
@@ -511,10 +551,10 @@
       <div class="panel-section">
         <h3>Data Sources</h3>
         <p class="data-source">
-          Imagery derived from <strong>NASA GEOS-5</strong> Earth system model,
-          assimilating over 5 million daily observations from MODIS, AIRS satellites,
-          and ground-based sensors.<br /><br />
-          Additional layers from <strong>NOAA</strong> and <strong>ArcGIS Living Atlas</strong>.
+          <strong>Aerosol layers</strong> — ECMWF Copernicus CAMS global forecast (AOD 550nm)<br />
+          <strong>Wind flow</strong> — NCEP GFS / Esri Living Atlas global wind analysis<br />
+          <strong>Basemap</strong> — Esri Dark Gray Canvas<br /><br />
+          CAMS assimilates satellite observations from MODIS, VIIRS, IASI and ground-based AERONET sensors.
         </p>
       </div>
     </aside>
@@ -530,24 +570,24 @@
           <div class="value" id="activeLayers">1</div>
         </div>
         <div class="stat-card">
-          <div class="label">AOD Index</div>
-          <div class="value">0.47 <span class="unit">avg</span></div>
+          <div class="label">Model</div>
+          <div class="value" style="font-size:16px;">CAMS <span class="unit">Global</span></div>
         </div>
         <div class="stat-card">
-          <div class="label">Coverage</div>
-          <div class="value">Global</div>
+          <div class="label">Resolution</div>
+          <div class="value">0.4<span class="unit">deg</span></div>
         </div>
       </div>
 
       <!-- Time Control -->
       <div class="time-control">
-        <button id="btnPrev" title="Previous" onclick="stepTime(-1)">
+        <button id="btnPrev" title="Previous">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
         </button>
-        <button id="btnPlay" class="active" title="Play/Pause" onclick="togglePlay()">
+        <button id="btnPlay" class="active" title="Play/Pause">
           <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
         </button>
-        <button id="btnNext" title="Next" onclick="stepTime(1)">
+        <button id="btnNext" title="Next">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
         </button>
         <div class="time-label" id="timeLabel">Loading...</div>
@@ -562,250 +602,308 @@
 
   </div>
 
-  <script>
-    // Display current date
+  <script type="module">
+    // ═══════════════════════════════════════════════════════
+    //  ArcGIS Maps SDK 5.0 — Earth in Action: Aerosols
+    // ═══════════════════════════════════════════════════════
+
+    import Map from "@arcgis/core/Map.js";
+    import SceneView from "@arcgis/core/views/SceneView.js";
+    import TileLayer from "@arcgis/core/layers/TileLayer.js";
+    import WMSLayer from "@arcgis/core/layers/WMSLayer.js";
+    import ImageryTileLayer from "@arcgis/core/layers/ImageryTileLayer.js";
+    import Basemap from "@arcgis/core/Basemap.js";
+    import FlowRenderer from "@arcgis/core/renderers/FlowRenderer.js";
+    import Color from "@arcgis/core/Color.js";
+
+    // ── Display date ──
     const now = new Date();
-    document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    document.getElementById("dateDisplay").textContent = now.toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
 
-    require([
-      "esri/Map",
-      "esri/views/SceneView",
-      "esri/layers/TileLayer",
-      "esri/layers/ImageryLayer",
-      "esri/layers/WebTileLayer",
-      "esri/Basemap",
-      "esri/renderers/RasterStretchRenderer",
-      "esri/rest/support/AlgorithmicColorRamp",
-      "esri/rest/support/MultipartColorRamp",
-      "esri/Color"
-    ], function (Map, SceneView, TileLayer, ImageryLayer, WebTileLayer, Basemap, RasterStretchRenderer, AlgorithmicColorRamp, MultipartColorRamp, Color) {
+    // ── CAMS WMS date (yesterday for data availability) ──
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const camsTime = yesterday.toISOString().split("T")[0] + "T00:00:00Z";
 
-      // ── Dark basemap ──
-      const darkBasemap = new Basemap({
-        baseLayers: [
-          new TileLayer({
-            url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer"
-          })
-        ]
-      });
+    // ══════════════════════════════════════
+    //  1. DARK BASEMAP
+    // ══════════════════════════════════════
+    const darkBasemap = new Basemap({
+      baseLayers: [
+        new TileLayer({
+          url: "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer"
+        })
+      ]
+    });
 
-      // ── Helper: build color ramp renderer ──
-      function makeRenderer(colors) {
-        const ramps = [];
-        for (let i = 0; i < colors.length - 1; i++) {
-          ramps.push(new AlgorithmicColorRamp({
-            fromColor: new Color(colors[i]),
-            toColor: new Color(colors[i + 1])
-          }));
+    // ══════════════════════════════════════
+    //  2. AEROSOL LAYERS — Copernicus CAMS WMS
+    //     Each is a DISTINCT aerosol species
+    // ══════════════════════════════════════
+
+    const camsBaseUrl = "https://eccharts.ecmwf.int/wms/?token=public";
+    const camsStyle = "sh_all_aod";
+
+    // Total Aerosol Optical Depth (composite of all species)
+    const compositeLayer = new WMSLayer({
+      url: camsBaseUrl,
+      sublayers: [{ name: "composition_aod550" }],
+      customParameters: { time: camsTime, styles: camsStyle },
+      title: "Aerosol Composite",
+      opacity: 0.80,
+      visible: true,
+      blendMode: "screen"
+    });
+
+    // Biomass Burning AOD (black carbon + organic carbon from fires)
+    const carbonLayer = new WMSLayer({
+      url: camsBaseUrl,
+      sublayers: [{ name: "composition_bbaod550" }],
+      customParameters: { time: camsTime, styles: camsStyle },
+      title: "Black Carbon",
+      opacity: 0.80,
+      visible: false,
+      blendMode: "screen"
+    });
+
+    // Dust AOD (mineral dust — Sahara, Gobi, Arabian Peninsula)
+    const dustLayer = new WMSLayer({
+      url: camsBaseUrl,
+      sublayers: [{ name: "composition_duaod550" }],
+      customParameters: { time: camsTime, styles: camsStyle },
+      title: "Dust",
+      opacity: 0.80,
+      visible: false,
+      blendMode: "screen"
+    });
+
+    // Sea Salt AOD (maritime aerosols from ocean spray)
+    const saltLayer = new WMSLayer({
+      url: camsBaseUrl,
+      sublayers: [{ name: "composition_ssaod550" }],
+      customParameters: { time: camsTime, styles: camsStyle },
+      title: "Sea Salt",
+      opacity: 0.80,
+      visible: false,
+      blendMode: "screen"
+    });
+
+    // ══════════════════════════════════════
+    //  3. WIND FLOW — Animated particle trails
+    //     Uses FlowRenderer on global wind data
+    // ══════════════════════════════════════
+
+    const windLayer = new ImageryTileLayer({
+      url: "https://tiledimageservices.arcgis.com/V6ZHFr6zdgNZuVG0/arcgis/rest/services/NLDAS_Hourly/ImageServer",
+      title: "Atmospheric Wind Flow",
+      renderer: new FlowRenderer({
+        trailWidth: "1.5px",
+        density: 0.5,
+        flowSpeed: 15,
+        trailLength: 150,
+        color: new Color([180, 220, 255, 0.5]),
+        maxPathLength: 200,
+        trailCap: "round"
+      }),
+      opacity: 0.6,
+      visible: true,
+      blendMode: "screen"
+    });
+
+    // Layer registry
+    const layerMap = {
+      composite: compositeLayer,
+      carbon: carbonLayer,
+      dust: dustLayer,
+      salt: saltLayer
+    };
+
+    // ══════════════════════════════════════
+    //  4. MAP + 3D SCENE VIEW
+    // ══════════════════════════════════════
+
+    const map = new Map({
+      basemap: darkBasemap,
+      layers: [compositeLayer, carbonLayer, dustLayer, saltLayer, windLayer]
+    });
+
+    const view = new SceneView({
+      container: "viewDiv",
+      map: map,
+      camera: {
+        position: { longitude: 20, latitude: 15, z: 22000000 },
+        heading: 0,
+        tilt: 0
+      },
+      environment: {
+        background: { type: "color", color: [10, 14, 23, 1] },
+        starsEnabled: true,
+        atmosphereEnabled: true,
+        atmosphere: { quality: "high" },
+        lighting: { type: "virtual" },
+        // Weather: subtle cloud cover for atmospheric depth
+        weather: {
+          type: "cloudy",
+          cloudCover: 0.15
         }
-        return new RasterStretchRenderer({
-          stretchType: "min-max",
-          colorRamp: new MultipartColorRamp({ colorRamps: ramps })
-        });
-      }
+      },
+      qualityProfile: "high",
+      ui: { components: ["zoom", "compass"] },
+      constraints: {
+        altitude: { min: 3000000, max: 60000000 }
+      },
+      popup: { autoOpenEnabled: false }
+    });
 
-      // ── NASA PM2.5 ImageryLayer — global coverage, confirmed working ──
-      const pm25Url = "https://gis.earthdata.nasa.gov/image/rest/services/sdei/sdei-global-annual-gwr-pm2-5-modis-misr-seawifs-aod-v4-gl-03/ImageServer";
+    view.ui.move("zoom", "top-right");
+    view.ui.move("compass", "top-right");
 
-      // Composite: purple/violet ramp
-      const compositeLayer = new ImageryLayer({
-        url: pm25Url,
-        title: "Aerosol Composite",
-        opacity: 0.75,
-        visible: true,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [10, 5, 30, 255],
-          [50, 20, 100, 255],
-          [139, 92, 246, 255],
-          [192, 132, 252, 255],
-          [245, 208, 254, 255]
-        ])
-      });
+    // ══════════════════════════════════════
+    //  5. LAYER STATUS TRACKING
+    // ══════════════════════════════════════
 
-      // Black Carbon: red/orange/yellow ramp
-      const carbonLayer = new ImageryLayer({
-        url: pm25Url,
-        title: "Black Carbon",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [28, 25, 23, 255],
-          [124, 45, 18, 255],
-          [220, 38, 38, 255],
-          [249, 115, 22, 255],
-          [253, 224, 71, 255]
-        ])
-      });
+    function trackLayerStatus(layer, statusId) {
+      const el = document.getElementById(statusId);
+      if (!el) return;
 
-      // Dust: amber/sand ramp
-      const dustLayer = new ImageryLayer({
-        url: pm25Url,
-        title: "Dust",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [28, 25, 23, 255],
-          [120, 53, 15, 255],
-          [212, 160, 60, 255],
-          [251, 191, 36, 255],
-          [254, 243, 199, 255]
-        ])
-      });
+      layer.when(
+        () => { el.textContent = "LIVE"; el.className = "layer-status ready"; },
+        () => { el.textContent = "ERROR"; el.className = "layer-status error"; }
+      );
+    }
 
-      // Sea Salt: blue ramp
-      const saltLayer = new ImageryLayer({
-        url: pm25Url,
-        title: "Sea Salt",
-        opacity: 0.75,
-        visible: false,
-        blendMode: "screen",
-        renderer: makeRenderer([
-          [12, 25, 41, 255],
-          [30, 58, 95, 255],
-          [37, 99, 235, 255],
-          [96, 165, 250, 255],
-          [191, 219, 254, 255]
-        ])
-      });
+    trackLayerStatus(compositeLayer, "status-composite");
+    trackLayerStatus(carbonLayer, "status-carbon");
+    trackLayerStatus(dustLayer, "status-dust");
+    trackLayerStatus(saltLayer, "status-salt");
 
-      // Layer registry
-      const layerMap = {
-        composite: compositeLayer,
-        carbon: carbonLayer,
-        dust: dustLayer,
-        salt: saltLayer
-      };
+    // ══════════════════════════════════════
+    //  6. HIDE LOADING WHEN READY
+    // ══════════════════════════════════════
 
-      // ── Map + Scene ──
-      const map = new Map({
-        basemap: darkBasemap,
-        layers: [compositeLayer, carbonLayer, dustLayer, saltLayer]
-      });
+    view.when(() => {
+      document.getElementById("loadingOverlay").classList.add("hidden");
+      startRotation();
+      updateTimeLabel();
+    });
 
-      const view = new SceneView({
-        container: "viewDiv",
-        map: map,
-        camera: {
-          position: { longitude: 20, latitude: 15, z: 22000000 },
-          heading: 0,
-          tilt: 0
-        },
-        environment: {
-          background: { type: "color", color: [10, 14, 23, 1] },
-          starsEnabled: true,
-          atmosphereEnabled: true,
-          atmosphere: { quality: "high" },
-          lighting: {
-            type: "virtual"
-          }
-        },
-        qualityProfile: "high",
-        ui: {
-          components: ["zoom", "compass"]
-        },
-        constraints: {
-          altitude: { min: 5000000, max: 60000000 }
-        },
-        popup: { autoOpenEnabled: false }
-      });
+    // ══════════════════════════════════════
+    //  7. GLOBE AUTO-ROTATION
+    // ══════════════════════════════════════
 
-      // Position default widgets
-      view.ui.move("zoom", "top-right");
-      view.ui.move("compass", "top-right");
+    let isPlaying = true;
+    let rotationHandle = null;
 
-      // ── Auto-rotate globe ──
-      let isPlaying = true;
-      let rotationHandle = null;
-
-      function startRotation() {
-        if (rotationHandle) return;
-        rotationHandle = setInterval(() => {
-          if (!view.interacting) {
-            const camera = view.camera.clone();
-            camera.position.longitude += 0.15;
-            view.goTo(camera, { animate: false });
-          }
-        }, 50);
-      }
-
-      function stopRotation() {
-        if (rotationHandle) {
-          clearInterval(rotationHandle);
-          rotationHandle = null;
+    function startRotation() {
+      if (rotationHandle) return;
+      rotationHandle = setInterval(() => {
+        if (!view.interacting) {
+          const camera = view.camera.clone();
+          camera.position.longitude += 0.12;
+          view.goTo(camera, { animate: false });
         }
+      }, 50);
+    }
+
+    function stopRotation() {
+      if (rotationHandle) {
+        clearInterval(rotationHandle);
+        rotationHandle = null;
       }
+    }
 
-      // ── Hide loading when ready ──
-      view.when(() => {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        startRotation();
-        updateTimeLabel();
-      });
+    // ══════════════════════════════════════
+    //  8. INTERACTIVE CONTROLS
+    // ══════════════════════════════════════
 
-      // ── Layer toggle ──
-      window.toggleLayer = function (card) {
+    // -- Aerosol card toggles --
+    document.querySelectorAll(".aerosol-card").forEach(card => {
+      card.addEventListener("click", () => {
         const layerName = card.dataset.layer;
         const layer = layerMap[layerName];
-        const isActive = card.classList.toggle('active');
+        if (!layer) return;
+
+        const isActive = card.classList.toggle("active");
         layer.visible = isActive;
 
-        // Update active count
-        const count = document.querySelectorAll('.aerosol-card.active').length;
-        document.getElementById('activeLayers').textContent = count;
+        // Update active layer count
+        const count = document.querySelectorAll(".aerosol-card.active").length;
+        document.getElementById("activeLayers").textContent = count;
 
-        // Update legend to first active layer
-        const firstActive = document.querySelector('.aerosol-card.active');
+        // Update legend bar to match first active layer
+        const firstActive = document.querySelector(".aerosol-card.active");
         if (firstActive) {
-          const bar = document.getElementById('legendBar');
-          bar.className = 'legend-bar legend-' + firstActive.dataset.layer;
+          document.getElementById("legendBar").className = "legend-bar legend-" + firstActive.dataset.layer;
         }
-      };
+      });
+    });
 
-      // ── Opacity ──
-      window.updateOpacity = function (val) {
-        document.getElementById('opacityValue').textContent = val + '%';
-        const opacity = val / 100;
-        Object.values(layerMap).forEach(l => { l.opacity = opacity; });
-      };
+    // -- Opacity slider --
+    const opacitySlider = document.getElementById("opacitySlider");
+    opacitySlider.addEventListener("input", () => {
+      const val = opacitySlider.value;
+      document.getElementById("opacityValue").textContent = val + "%";
+      const opacity = val / 100;
+      Object.values(layerMap).forEach(l => { l.opacity = opacity; });
+    });
 
-      // ── Time simulation ──
-      let timeOffset = 0;
+    // -- Wind flow toggle --
+    document.getElementById("windToggle").addEventListener("change", (e) => {
+      windLayer.visible = e.target.checked;
+    });
 
-      function updateTimeLabel() {
-        const d = new Date();
-        d.setHours(d.getHours() - timeOffset * 3);
-        const str = d.toLocaleString('en-US', {
-          month: 'short', day: 'numeric',
-          hour: '2-digit', minute: '2-digit',
-          hour12: false
-        }) + ' UTC';
-        document.getElementById('timeLabel').textContent = str;
+    // -- Wind density slider --
+    document.getElementById("densitySlider").addEventListener("input", (e) => {
+      const renderer = windLayer.renderer.clone();
+      renderer.density = e.target.value / 10;
+      windLayer.renderer = renderer;
+    });
+
+    // -- Wind speed slider --
+    document.getElementById("speedSlider").addEventListener("input", (e) => {
+      const renderer = windLayer.renderer.clone();
+      renderer.flowSpeed = parseInt(e.target.value);
+      windLayer.renderer = renderer;
+    });
+
+    // -- Play/Pause --
+    document.getElementById("btnPlay").addEventListener("click", () => {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById("btnPlay");
+      const icon = document.getElementById("playIcon");
+      if (isPlaying) {
+        btn.classList.add("active");
+        icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+        startRotation();
+      } else {
+        btn.classList.remove("active");
+        icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+        stopRotation();
       }
+    });
 
-      window.stepTime = function (dir) {
-        timeOffset = Math.max(0, Math.min(56, timeOffset - dir));
-        updateTimeLabel();
-      };
+    // -- Time stepping --
+    let timeOffset = 0;
 
-      window.togglePlay = function () {
-        isPlaying = !isPlaying;
-        const btn = document.getElementById('btnPlay');
-        const icon = document.getElementById('playIcon');
-        if (isPlaying) {
-          btn.classList.add('active');
-          icon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-          startRotation();
-        } else {
-          btn.classList.remove('active');
-          icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-          stopRotation();
-        }
-      };
+    function updateTimeLabel() {
+      const d = new Date();
+      d.setHours(d.getHours() - timeOffset * 3);
+      document.getElementById("timeLabel").textContent = d.toLocaleString("en-US", {
+        month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: false
+      }) + " UTC";
+    }
+
+    document.getElementById("btnPrev").addEventListener("click", () => {
+      timeOffset = Math.min(56, timeOffset + 1);
+      updateTimeLabel();
+    });
+
+    document.getElementById("btnNext").addEventListener("click", () => {
+      timeOffset = Math.max(0, timeOffset - 1);
+      updateTimeLabel();
     });
   </script>
 
