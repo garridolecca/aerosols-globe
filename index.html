@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Earth in Action — Aerosols</title>
-  <!-- No external map SDK needed — pure Canvas rendering -->
+  <link rel="stylesheet" href="https://js.arcgis.com/5.0/@arcgis/core/assets/esri/themes/dark/main.css" />
+  <script type="importmap">
+  { "imports": { "@arcgis/core/": "https://js.arcgis.com/5.0/@arcgis/core/" } }
+  </script>
+  <script type="module" src="https://js.arcgis.com/5.0/"></script>
   <style>
     :root {
       --brand: #00b4d8;
@@ -70,9 +74,11 @@
 
     /* Map */
     .map-wrap { position: relative; overflow: hidden; background: #000; }
-    #viewDiv { display: none; }
+    #viewDiv { width: 100%; height: 100%; }
+    /* Dark overlay to dim basemap — makes particles pop */
+    #mapDim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 1; pointer-events: none; }
     #particleCanvas {
-      position: absolute; inset: 0; z-index: 2;
+      position: absolute; inset: 0; pointer-events: none; z-index: 2;
     }
 
     /* ── Intro overlay ── */
@@ -148,6 +154,9 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading p { color: var(--text-secondary); font-size: 12px; }
 
+    .esri-attribution { display: none !important; }
+    .esri-ui-corner .esri-component { background: rgba(10,14,23,0.88) !important; backdrop-filter: blur(12px); border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.08) !important; }
+    .esri-widget--button { color: var(--text-primary) !important; }
 
     @media (max-width: 860px) { .app { grid-template-columns: 1fr; } .panel { display: none; } }
   </style>
@@ -189,12 +198,12 @@
       <div class="card">
         <h3>Animation Controls</h3>
         <div class="slider-row">
-          <label>Particle Count: <strong id="countVal">10000</strong></label>
-          <input type="range" id="countSlider" min="1000" max="25000" value="10000" step="1000" />
+          <label>Particle Count: <strong id="countVal">8000</strong></label>
+          <input type="range" id="countSlider" min="1000" max="20000" value="8000" step="1000" />
         </div>
         <div class="slider-row">
-          <label>Speed: <strong id="speedVal">1.5</strong>x</label>
-          <input type="range" id="speedSlider" min="1" max="30" value="15" />
+          <label>Speed: <strong id="speedVal">1.0</strong>x</label>
+          <input type="range" id="speedSlider" min="1" max="30" value="10" />
         </div>
         <div class="slider-row">
           <label>Trail Length: <strong id="trailVal">0.92</strong></label>
@@ -229,6 +238,8 @@
     </aside>
 
     <div class="map-wrap">
+      <div id="viewDiv"></div>
+      <div id="mapDim"></div>
       <canvas id="particleCanvas"></canvas>
       <div class="loading" id="loader">
         <div class="spinner"></div>
@@ -282,11 +293,26 @@
   </div>
 
   <script type="module">
+    import Map from "@arcgis/core/Map.js";
+    import MapView from "@arcgis/core/views/MapView.js";
+
     document.getElementById("dateDisplay").textContent = new Date().toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
 
-    // Pure canvas rendering — no map SDK needed
+    // ═══════════════════════════════════════
+    //  ArcGIS dark basemap
+    // ═══════════════════════════════════════
+    const map = new Map({ basemap: "dark-gray-vector" });
+    const view = new MapView({
+      container: "viewDiv", map,
+      center: [40, 20], zoom: 2,
+      constraints: { minZoom: 2, maxZoom: 6, rotationEnabled: false },
+      background: { color: [0, 0, 0, 1] },
+      ui: { components: ["zoom"] },
+      popup: { autoOpenEnabled: false }
+    });
+    view.ui.move("zoom", "top-right");
 
     // ═══════════════════════════════════════
     //  Particle system config
@@ -298,8 +324,8 @@
       sea_salt: [[10,20,60],[30,80,180],[60,160,230],[110,220,250],[200,245,255]]
     };
 
-    let numParticles = 10000;
-    let speedFactor = 1.5;
+    let numParticles = 8000;
+    let speedFactor = 1.0;
     let fadeOpacity = 0.92;
     let lineWidth = 1.2;
     let currentSpecies = "composite";
@@ -362,132 +388,44 @@
       canvas.height = ch;
     }
 
-    // ── Robinson projection (pure JS, fast lookup table) ──
-    const ROB = [
-      [1.0000,0.0000],[0.9986,0.0620],[0.9954,0.1240],[0.9900,0.1860],
-      [0.9822,0.2480],[0.9730,0.3100],[0.9600,0.3720],[0.9427,0.4340],
-      [0.9216,0.4958],[0.8962,0.5571],[0.8679,0.6176],[0.8350,0.6769],
-      [0.7986,0.7346],[0.7597,0.7903],[0.7186,0.8435],[0.6732,0.8936],
-      [0.6213,0.9394],[0.5722,0.9761],[0.5322,1.0000]
-    ];
+    // Convert lon/lat to Web Mercator, then to screen pixels
+    const DEG2RAD = Math.PI / 180;
+    const HALF_SIZE = 20037508.342789244; // Web Mercator half-world size
 
-    function robinsonXY(lon, lat) {
-      const absLat = Math.min(Math.abs(lat), 90);
-      const i = absLat / 5;
-      const lo = Math.floor(i), hi = Math.min(lo + 1, 18), f = i - lo;
-      const xf = ROB[lo][0] + (ROB[hi][0] - ROB[lo][0]) * f;
-      const yf = ROB[lo][1] + (ROB[hi][1] - ROB[lo][1]) * f;
-      return [
-        0.8487 * xf * lon * Math.PI / 180,
-        1.3523 * yf * (lat < 0 ? -1 : 1)
-      ];
+    function lonToMerc(lon) { return lon * HALF_SIZE / 180; }
+    function latToMerc(lat) {
+      const rad = Math.max(-85, Math.min(85, lat)) * DEG2RAD;
+      return Math.log(Math.tan(Math.PI / 4 + rad / 2)) * HALF_SIZE / Math.PI;
     }
-
-    const [ROB_W] = robinsonXY(180, 0);
-    const [, ROB_H] = robinsonXY(0, 90);
-    const MAP_PAD = 0.06; // padding ratio
 
     function project(lon, lat) {
-      const [rx, ry] = robinsonXY(lon, lat);
-      const usableW = cw * (1 - MAP_PAD * 2);
-      const usableH = ch * (1 - MAP_PAD * 2);
-      const scale = Math.min(usableW / (ROB_W * 2), usableH / (ROB_H * 2));
-      const cx = cw / 2, cy = ch / 2;
-      return [cx + rx * scale, cy - ry * scale];
+      const ext = view.extent;
+      if (!ext) return null;
+      const mx = lonToMerc(lon);
+      const my = latToMerc(lat);
+      const x = ((mx - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
+      const y = (1 - (my - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
+      return [x, y];
     }
 
+    // Get visible extent in lon/lat for spawning particles
     function getGeoExtent() {
-      return { lonMin: -175, lonMax: 175, latMin: -78, latMax: 78 };
+      const ext = view.extent;
+      if (!ext) return { lonMin: -180, lonMax: 180, latMin: -60, latMax: 70 };
+      const lonMin = Math.max(-180, ext.xmin * 180 / HALF_SIZE);
+      const lonMax = Math.min(180, ext.xmax * 180 / HALF_SIZE);
+      const latMin = Math.max(-85, (Math.atan(Math.exp(ext.ymin * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
+      const latMax = Math.min(85, (Math.atan(Math.exp(ext.ymax * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
+      return { lonMin, lonMax, latMin, latMax };
     }
 
     function randomParticle() {
+      const ge = getGeoExtent();
       return {
-        x: -175 + Math.random() * 350,
-        y: -78 + Math.random() * 156,
+        x: ge.lonMin + Math.random() * (ge.lonMax - ge.lonMin),
+        y: ge.latMin + Math.random() * (ge.latMax - ge.latMin),
         age: Math.floor(Math.random() * 80)
       };
-    }
-
-    // ── Country outlines (loaded from Natural Earth GeoJSON) ──
-    let countryPaths = null;
-
-    async function loadCountries() {
-      try {
-        const resp = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json");
-        const topo = await resp.json();
-        // Convert TopoJSON to coordinate arrays
-        const land = topo.objects.land;
-        const arcs = topo.arcs;
-
-        // Decode TopoJSON arcs
-        function decodeArc(arcIdx) {
-          const reverse = arcIdx < 0;
-          const arc = arcs[reverse ? ~arcIdx : arcIdx];
-          const coords = [];
-          let x = 0, y = 0;
-          for (const [dx, dy] of arc) {
-            x += dx; y += dy;
-            const lon = (x / topo.transform.scale[0] * topo.transform.scale[0]) + topo.transform.translate[0];
-            const lat = (y / topo.transform.scale[1] * topo.transform.scale[1]) + topo.transform.translate[1];
-            coords.push([
-              x * topo.transform.scale[0] + topo.transform.translate[0],
-              y * topo.transform.scale[1] + topo.transform.translate[1]
-            ]);
-          }
-          return reverse ? coords.reverse() : coords;
-        }
-
-        // Extract all rings
-        const rings = [];
-        function processArcs(arcRefs) {
-          const ring = [];
-          for (const ref of arcRefs) {
-            ring.push(...decodeArc(ref));
-          }
-          return ring;
-        }
-
-        if (land.type === "MultiPolygon") {
-          for (const poly of land.arcs) {
-            for (const ringArcs of poly) {
-              rings.push(processArcs(ringArcs));
-            }
-          }
-        } else if (land.type === "Polygon") {
-          for (const ringArcs of land.arcs) {
-            rings.push(processArcs(ringArcs));
-          }
-        }
-
-        countryPaths = rings;
-        console.log(`Loaded ${rings.length} land outlines`);
-      } catch (e) {
-        console.warn("Could not load country outlines:", e);
-      }
-    }
-
-    function drawLand() {
-      if (!countryPaths) return;
-      ctx.strokeStyle = "rgba(100,120,140,0.3)";
-      ctx.fillStyle = "rgba(30,40,55,0.5)";
-      ctx.lineWidth = 0.5;
-
-      for (const ring of countryPaths) {
-        if (ring.length < 3) continue;
-        ctx.beginPath();
-        const start = project(ring[0][0], ring[0][1]);
-        if (!start) continue;
-        ctx.moveTo(start[0], start[1]);
-        // Sample every few points for performance
-        const step = Math.max(1, Math.floor(ring.length / 200));
-        for (let i = step; i < ring.length; i += step) {
-          const p = project(ring[i][0], ring[i][1]);
-          if (p) ctx.lineTo(p[0], p[1]);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
     }
 
     function initParticles() {
@@ -527,40 +465,8 @@
       trailCtx = trailCanvas.getContext("2d");
     }
 
-    // Separate land canvas (drawn once, redrawn on resize)
-    let landCanvas, landCtx, landDrawn = false;
-    function drawLandOnce() {
-      if (!countryPaths) return;
-      landCanvas = document.createElement("canvas");
-      landCanvas.width = cw; landCanvas.height = ch;
-      landCtx = landCanvas.getContext("2d");
-      // Fill background
-      landCtx.fillStyle = "#0a0e17";
-      landCtx.fillRect(0, 0, cw, ch);
-      // Draw land masses
-      landCtx.strokeStyle = "rgba(80,100,130,0.4)";
-      landCtx.fillStyle = "rgba(20,28,42,0.8)";
-      landCtx.lineWidth = 0.6;
-      for (const ring of countryPaths) {
-        if (ring.length < 3) continue;
-        landCtx.beginPath();
-        const s = project(ring[0][0], ring[0][1]);
-        if (!s) continue;
-        landCtx.moveTo(s[0], s[1]);
-        const step = Math.max(1, Math.floor(ring.length / 300));
-        for (let i = step; i < ring.length; i += step) {
-          const p = project(ring[i][0], ring[i][1]);
-          if (p) landCtx.lineTo(p[0], p[1]);
-        }
-        landCtx.closePath();
-        landCtx.fill();
-        landCtx.stroke();
-      }
-      landDrawn = true;
-    }
-
     function animate() {
-      if (!windData || cw === 0) { requestAnimationFrame(animate); return; }
+      if (!windData || !view.extent || cw === 0) { requestAnimationFrame(animate); return; }
 
       if (!trailCanvas || trailCanvas.width !== cw || trailCanvas.height !== ch) {
         initTrail();
@@ -570,9 +476,8 @@
       trailCtx.globalAlpha = fadeOpacity;
       trailCtx.drawImage(canvas, 0, 0);
 
-      // Clear main canvas, draw land bg, paste faded trails
+      // Clear main canvas and paste faded trails
       ctx.clearRect(0, 0, cw, ch);
-      if (landDrawn && landCanvas) ctx.drawImage(landCanvas, 0, 0);
       ctx.drawImage(trailCanvas, 0, 0);
 
       // Clear trail canvas for next frame
@@ -603,7 +508,9 @@
         // Wrap/reset
         if (p.x > 180) p.x -= 360;
         if (p.x < -180) p.x += 360;
-        if (p.y > 78 || p.y < -78 || p.x > 175 || p.x < -175) {
+        if (p.y > 85 || p.y < -85) { particles[i] = randomParticle(); continue; }
+        const ge = getGeoExtent();
+        if (p.x < ge.lonMin || p.x > ge.lonMax || p.y < ge.latMin || p.y > ge.latMax) {
           particles[i] = randomParticle(); continue;
         }
 
@@ -622,18 +529,18 @@
     }
 
     // ═══════════════════════════════════════
-    //  Init — pure canvas, no ArcGIS view needed
+    //  Init
     // ═══════════════════════════════════════
-    (async () => {
+    view.when(async () => {
       resizeCanvas();
-      window.addEventListener("resize", () => { resizeCanvas(); landDrawn = false; if (countryPaths) drawLandOnce(); });
+      window.addEventListener("resize", resizeCanvas);
+      view.watch("extent", resizeCanvas);
 
-      await Promise.all([loadSpecies("composite"), loadCountries()]);
-      drawLandOnce();
+      await loadSpecies("composite");
       initParticles();
       document.getElementById("loader").classList.add("hidden");
       animate();
-    })();
+    });
 
     // ═══════════════════════════════════════
     //  UI Controls
