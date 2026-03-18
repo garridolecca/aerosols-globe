@@ -224,14 +224,16 @@ fn vs_main(
     vec2( 1.0,  1.0),
   );
 
-  let offset = quadPos[vertexIndex] * uniforms.pointSize * 0.001; // pointSize in ~pixels, scale to NDC
+  // --- Particle size scales with concentration ---
+  // Low concentration = tiny (0.3x), high = large (1.8x)
+  let t = clamp(p.speed / max(uniforms.maxMag * 0.5, 0.001), 0.0, 1.0);
+  let sizeMult = 0.3 + t * 1.5; // range [0.3, 1.8]
+  let offset = quadPos[vertexIndex] * uniforms.pointSize * 0.001 * sizeMult;
 
   var out : VertexOutput;
   out.position = vec4(ndcX + offset.x, ndcY + offset.y, 0.0, 1.0);
-  out.pointCoord = quadPos[vertexIndex] * 0.5 + 0.5; // [0,1] for circle SDF
+  out.pointCoord = quadPos[vertexIndex] * 0.5 + 0.5;
 
-  // Color based on speed/magnitude
-  let t = clamp(p.speed / max(uniforms.maxMag * 0.5, 0.001), 0.0, 1.0);
   let baseColor = getColor(t, uniforms.colorMode);
 
   // Age-based alpha fade
@@ -286,6 +288,59 @@ fn fs_main(@builtin(position) fragCoord : vec4<f32>) -> @location(0) vec4<f32> {
   let uv = fragCoord.xy / texSize;
   let color = textureSampleLevel(fadeTex, fadeSampler, uv, 0.0);
   return vec4(color.rgb, color.a * fadeParams.fadeOpacity);
+}
+`;
+
+
+const BLOOM_SHADER = /* wgsl */ `
+
+// Gaussian blur for bloom post-processing
+// Two passes: horizontal then vertical (separable filter)
+
+@group(0) @binding(0) var inputTex : texture_2d<f32>;
+@group(0) @binding(1) var inputSampler : sampler;
+
+struct BloomParams {
+  direction : vec2<f32>,  // (1,0) for horizontal, (0,1) for vertical
+  intensity : f32,
+  threshold : f32,
+};
+@group(0) @binding(2) var<uniform> bloomParams : BloomParams;
+
+@vertex
+fn vs_main(@builtin(vertex_index) vertexIndex : u32) -> @builtin(position) vec4<f32> {
+  var pos = array<vec2<f32>, 3>(
+    vec2(-1.0, -1.0),
+    vec2( 3.0, -1.0),
+    vec2(-1.0,  3.0),
+  );
+  return vec4(pos[vertexIndex], 0.0, 1.0);
+}
+
+@fragment
+fn fs_main(@builtin(position) fragCoord : vec4<f32>) -> @location(0) vec4<f32> {
+  let texSize = vec2<f32>(textureDimensions(inputTex));
+  let uv = fragCoord.xy / texSize;
+  let pixel = 1.0 / texSize;
+
+  // 9-tap Gaussian weights
+  let weights = array<f32, 5>(0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+
+  // Sample center
+  var result = textureSampleLevel(inputTex, inputSampler, uv, 0.0) * weights[0];
+
+  // Sample neighbors along blur direction
+  let dir = bloomParams.direction * pixel;
+  for (var i = 1; i < 5; i++) {
+    let off = dir * f32(i) * 2.0; // spread the blur wider
+    result += textureSampleLevel(inputTex, inputSampler, uv + off, 0.0) * weights[i];
+    result += textureSampleLevel(inputTex, inputSampler, uv - off, 0.0) * weights[i];
+  }
+
+  // Apply intensity and threshold (only bloom bright areas)
+  let brightness = dot(result.rgb, vec3(0.2126, 0.7152, 0.0722));
+  let factor = smoothstep(bloomParams.threshold, bloomParams.threshold + 0.1, brightness);
+  return vec4(result.rgb * bloomParams.intensity * factor, result.a);
 }
 `;
 
@@ -365,6 +420,7 @@ export class WebGPUParticleSystem {
     this._createComputePipeline();
     this._createRenderPipeline();
     this._createFadePipeline();
+    this._createBloomPipeline();
 
     // --- Create particle buffers ---
     this._createParticleBuffers();
@@ -374,6 +430,9 @@ export class WebGPUParticleSystem {
 
     // --- Create ping-pong textures for trails ---
     this._createTrailTextures();
+
+    // --- Create bloom textures ---
+    this._createBloomTextures();
 
     this._ready = true;
     console.log(`WebGPU particle system initialized: ${this.numParticles} particles`);
@@ -647,6 +706,68 @@ export class WebGPUParticleSystem {
 
     // Create fade bind groups for both directions
     this._createFadeBindGroups();
+
+    // Recreate bloom textures if they exist
+    if (this.bloomPipeline) {
+      this._createBloomTextures();
+    }
+  }
+
+  _createBloomPipeline() {
+    const module = this.device.createShaderModule({
+      label: "bloom-shader",
+      code: BLOOM_SHADER,
+    });
+
+    this.bloomPipeline = this.device.createRenderPipeline({
+      label: "bloom-pipeline",
+      layout: "auto",
+      vertex: { module, entryPoint: "vs_main" },
+      fragment: {
+        module,
+        entryPoint: "fs_main",
+        targets: [{
+          format: "rgba8unorm",
+          blend: {
+            color: { operation: "add", srcFactor: "one", dstFactor: "one" }, // additive
+            alpha: { operation: "add", srcFactor: "one", dstFactor: "one" },
+          },
+        }],
+      },
+      primitive: { topology: "triangle-list" },
+    });
+  }
+
+  _createBloomTextures() {
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    // Bloom at half resolution for performance
+    const bw = Math.floor(w / 2);
+    const bh = Math.floor(h / 2);
+
+    this.bloomTex = this.device.createTexture({
+      label: "bloom-intermediate",
+      size: [bw, bh],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    this.bloomView = this.bloomTex.createView();
+
+    this.bloomSampler = this.device.createSampler({
+      magFilter: "linear",
+      minFilter: "linear",
+    });
+
+    // Uniform buffer for bloom params (direction, intensity, threshold)
+    this.bloomUniformBuffer = this.device.createBuffer({
+      label: "bloom-uniforms",
+      size: 16, // vec2 direction + f32 intensity + f32 threshold
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this._bloomWidth = bw;
+    this._bloomHeight = bh;
   }
 
   _createComputeBindGroups() {
@@ -850,7 +971,67 @@ export class WebGPUParticleSystem {
       pass.end();
     }
 
-    // PASS 4: Copy result trail to the swapchain (screen)
+    // PASS 4: Bloom - blur bright areas and composite back
+    if (this.bloomTex && this.bloomPipeline) {
+      // 4a: Horizontal blur from trail → bloom texture
+      this.device.queue.writeBuffer(this.bloomUniformBuffer, 0, new Float32Array([
+        1.0, 0.0,  // direction: horizontal
+        1.2,       // intensity
+        0.08,      // threshold
+      ]));
+
+      const bloomBG_H = this.device.createBindGroup({
+        layout: this.bloomPipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: this.trailViews[writeIdx] },
+          { binding: 1, resource: this.bloomSampler },
+          { binding: 2, resource: { buffer: this.bloomUniformBuffer } },
+        ],
+      });
+
+      const bloomPass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view: this.bloomView,
+          clearValue: [0, 0, 0, 0],
+          loadOp: "clear",
+          storeOp: "store",
+        }],
+      });
+      bloomPass.setPipeline(this.bloomPipeline);
+      bloomPass.setBindGroup(0, bloomBG_H);
+      bloomPass.draw(3);
+      bloomPass.end();
+
+      // 4b: Vertical blur from bloom → back onto trail (additive)
+      this.device.queue.writeBuffer(this.bloomUniformBuffer, 0, new Float32Array([
+        0.0, 1.0,  // direction: vertical
+        1.2,       // intensity
+        0.08,      // threshold
+      ]));
+
+      const bloomBG_V = this.device.createBindGroup({
+        layout: this.bloomPipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: this.bloomView },
+          { binding: 1, resource: this.bloomSampler },
+          { binding: 2, resource: { buffer: this.bloomUniformBuffer } },
+        ],
+      });
+
+      const vBloomPass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view: this.trailViews[writeIdx],
+          loadOp: "load", // additive on top of existing trail
+          storeOp: "store",
+        }],
+      });
+      vBloomPass.setPipeline(this.bloomPipeline);
+      vBloomPass.setBindGroup(0, bloomBG_V);
+      vBloomPass.draw(3);
+      vBloomPass.end();
+    }
+
+    // PASS 5: Copy result trail to the swapchain (screen)
     {
       const pass = encoder.beginRenderPass({
         colorAttachments: [{
