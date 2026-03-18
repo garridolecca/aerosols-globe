@@ -105,8 +105,8 @@
 
   <!-- WebGPU Header -->
   <rect x="30" y="255" width="1040" height="32" rx="12" fill="rgba(118,185,0,0.08)"/>
-  <text x="60" y="276" fill="#76b900" font-size="12" font-weight="700" letter-spacing="1">NVIDIA WebGPU COMPUTE PIPELINE</text>
-  <text x="960" y="276" fill="#76b900" font-size="10" font-weight="600">500,000 PARTICLES @ 60 FPS</text>
+  <text x="60" y="276" fill="#76b900" font-size="12" font-weight="700" letter-spacing="1">NVIDIA WebGPU 6-PASS GPU PIPELINE</text>
+  <text x="920" y="276" fill="#76b900" font-size="10" font-weight="600">500K PARTICLES + BLOOM @ 60 FPS</text>
 
   <!-- Pass 1: Compute -->
   <rect x="50" y="300" width="220" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
@@ -140,31 +140,47 @@
   <polygon points="555,366 565,370 555,374" fill="#76b900" opacity="0.5"/>
 
   <!-- Pass 3: Render -->
-  <rect x="570" y="300" width="230" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
-  <rect x="570" y="300" width="230" height="24" rx="8" fill="rgba(118,185,0,0.12)"/>
-  <text x="685" y="316" text-anchor="middle" fill="#76b900" font-size="10" font-weight="700">PASS 3: RENDER</text>
-  <text x="582" y="340" fill="#e2e8f0" font-size="10" font-weight="500">Particle Drawing</text>
-  <text x="582" y="356" fill="#94a3b8" font-size="8.5">Instanced quads (6 verts x 500K)</text>
-  <text x="582" y="372" fill="#94a3b8" font-size="8.5">SDF circular glow (fragment)</text>
-  <text x="582" y="388" fill="#94a3b8" font-size="8.5">Web Mercator projection (vertex)</text>
-  <text x="582" y="404" fill="#94a3b8" font-size="8.5">Additive blending (src-alpha + one)</text>
-  <text x="582" y="420" fill="#94a3b8" font-size="8.5">Per-species color ramps in WGSL</text>
-  <text x="582" y="434" fill="#64748b" font-size="7.5">3M vertices per frame</text>
+  <rect x="570" y="300" width="150" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
+  <rect x="570" y="300" width="150" height="24" rx="8" fill="rgba(118,185,0,0.12)"/>
+  <text x="645" y="316" text-anchor="middle" fill="#76b900" font-size="9" font-weight="700">PASS 3: RENDER</text>
+  <text x="580" y="340" fill="#e2e8f0" font-size="9" font-weight="500">Particle Drawing</text>
+  <text x="580" y="355" fill="#94a3b8" font-size="8">Instanced quads (3M verts)</text>
+  <text x="580" y="370" fill="#94a3b8" font-size="8">Size by concentration</text>
+  <text x="580" y="385" fill="#94a3b8" font-size="8">SDF glow + additive blend</text>
+  <text x="580" y="400" fill="#94a3b8" font-size="8">Robinson projection</text>
+  <text x="580" y="415" fill="#94a3b8" font-size="8">Per-species color ramps</text>
+  <text x="580" y="434" fill="#64748b" font-size="7">WGSL vertex + fragment</text>
 
   <!-- Arrow -->
-  <line x1="800" y1="370" x2="830" y2="370" stroke="#76b900" stroke-width="1.5" opacity="0.4" filter="url(#softGlow)"/>
-  <polygon points="830,366 840,370 830,374" fill="#76b900" opacity="0.5"/>
+  <line x1="720" y1="370" x2="738" y2="370" stroke="#76b900" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="738,366 748,370 738,374" fill="#76b900" opacity="0.5"/>
 
-  <!-- Pass 4: Screen -->
-  <rect x="845" y="300" width="210" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
-  <rect x="845" y="300" width="210" height="24" rx="8" fill="rgba(118,185,0,0.12)"/>
-  <text x="950" y="316" text-anchor="middle" fill="#76b900" font-size="10" font-weight="700">PASS 4: SCREEN</text>
-  <text x="857" y="340" fill="#e2e8f0" font-size="10" font-weight="500">Composite Output</text>
-  <text x="857" y="356" fill="#94a3b8" font-size="8.5">Copy to swapchain canvas</text>
-  <text x="857" y="372" fill="#94a3b8" font-size="8.5">Premultiplied alpha mode</text>
-  <text x="857" y="388" fill="#94a3b8" font-size="8.5">Transparent overlay on basemap</text>
-  <text x="857" y="404" fill="#94a3b8" font-size="8.5">CSS z-index compositing</text>
-  <text x="857" y="434" fill="#64748b" font-size="7.5">Final frame to display</text>
+  <!-- Pass 4-5: Bloom -->
+  <rect x="753" y="300" width="140" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
+  <rect x="753" y="300" width="140" height="24" rx="8" fill="rgba(118,185,0,0.12)"/>
+  <text x="823" y="316" text-anchor="middle" fill="#76b900" font-size="9" font-weight="700">PASS 4-5: BLOOM</text>
+  <text x="763" y="340" fill="#e2e8f0" font-size="9" font-weight="500">GPU Post-Processing</text>
+  <text x="763" y="355" fill="#94a3b8" font-size="8">9-tap Gaussian blur</text>
+  <text x="763" y="370" fill="#94a3b8" font-size="8">H + V separable passes</text>
+  <text x="763" y="385" fill="#94a3b8" font-size="8">Half-resolution texture</text>
+  <text x="763" y="400" fill="#94a3b8" font-size="8">Brightness threshold</text>
+  <text x="763" y="415" fill="#94a3b8" font-size="8">Additive composite</text>
+  <text x="763" y="434" fill="#64748b" font-size="7">Cinematic neon glow</text>
+
+  <!-- Arrow -->
+  <line x1="893" y1="370" x2="911" y2="370" stroke="#76b900" stroke-width="1.5" opacity="0.4"/>
+  <polygon points="911,366 921,370 911,374" fill="#76b900" opacity="0.5"/>
+
+  <!-- Pass 6: Screen -->
+  <rect x="926" y="300" width="130" height="140" rx="8" fill="rgba(118,185,0,0.06)" stroke="rgba(118,185,0,0.25)" stroke-width="1"/>
+  <rect x="926" y="300" width="130" height="24" rx="8" fill="rgba(118,185,0,0.12)"/>
+  <text x="991" y="316" text-anchor="middle" fill="#76b900" font-size="9" font-weight="700">PASS 6: SCREEN</text>
+  <text x="936" y="340" fill="#e2e8f0" font-size="9" font-weight="500">Final Composite</text>
+  <text x="936" y="355" fill="#94a3b8" font-size="8">Copy to swapchain</text>
+  <text x="936" y="370" fill="#94a3b8" font-size="8">Premultiplied alpha</text>
+  <text x="936" y="385" fill="#94a3b8" font-size="8">Overlay on Robinson</text>
+  <text x="936" y="400" fill="#94a3b8" font-size="8">basemap (WMO tiles)</text>
+  <text x="936" y="434" fill="#64748b" font-size="7">60 FPS output</text>
 
   <!-- ════════════════════════════════════ -->
   <!-- ROW 3: OUTPUT -->
@@ -181,8 +197,8 @@
 
   <!-- Output components -->
   <rect x="200" y="540" width="160" height="48" rx="6" fill="rgba(0,121,193,0.08)" stroke="rgba(0,169,224,0.25)" stroke-width="1"/>
-  <text x="280" y="560" text-anchor="middle" fill="#00a9e0" font-size="10" font-weight="600">ArcGIS Basemap</text>
-  <text x="280" y="576" text-anchor="middle" fill="#94a3b8" font-size="8">Dark Gray Vector (z:0)</text>
+  <text x="280" y="560" text-anchor="middle" fill="#00a9e0" font-size="10" font-weight="600">Dark Robinson Basemap</text>
+  <text x="280" y="576" text-anchor="middle" fill="#94a3b8" font-size="8">WMO tiles, WKID 54030 (z:0)</text>
 
   <text x="378" y="566" fill="#64748b" font-size="14">+</text>
 
@@ -203,5 +219,5 @@
   <text x="850" y="576" text-anchor="middle" fill="#94a3b8" font-size="8">60 FPS</text>
 
   <!-- Credit -->
-  <text x="550" y="612" text-anchor="middle" fill="#475569" font-size="9">Created by Jhonatan Garrido-Lecca | NASA GEOS-FP | NVIDIA WebGPU | ArcGIS Maps SDK 5.0</text>
+  <text x="550" y="612" text-anchor="middle" fill="#475569" font-size="9">Created by Jhonatan Garrido-Lecca | NASA GEOS-FP | NVIDIA WebGPU | Robinson Projection | ArcGIS Maps SDK 5.0</text>
 </svg>
