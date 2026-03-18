@@ -341,22 +341,36 @@
     //  Dark Robinson basemap (WKID 54030)
     //  Custom restyled WMO Robinson Agreed tiles
     // ═══════════════════════════════════════
+    const WMO_URL = "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer";
     const darkRobinson = new VectorTileLayer({
-      url: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer",
-      // Apply custom dark style override
-      customStyle: {
+      // Use 'style' (not 'customStyle') to override the tile rendering
+      style: {
         version: 8,
-        sprite: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer/resources/sprites/sprite",
-        glyphs: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf",
-        sources: { esri: { type: "vector", url: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer" } },
+        sprite: WMO_URL + "/resources/sprites/sprite",
+        glyphs: WMO_URL + "/resources/fonts/{fontstack}/{range}.pbf",
+        sources: { esri: { type: "vector", url: WMO_URL } },
         layers: [
-          { id: "ocean", type: "fill", source: "esri", "source-layer": "Ocean_Robinson", paint: { "fill-color": "#080c14" } },
-          { id: "land", type: "fill", source: "esri", "source-layer": "BNDA_WMO_Robinson", paint: { "fill-color": "#111827" } },
-          { id: "coast", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson", filter: ["==", "_symbol", 2], paint: { "line-color": "#1e3a5f", "line-width": 0.5 } },
-          { id: "borders", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson", filter: ["==", "_symbol", 3], paint: { "line-color": "#1e2d45", "line-dasharray": [8, 4], "line-width": 0.5 } },
-          { id: "grid30", type: "line", source: "esri", "source-layer": "30 degree grid", maxzoom: 1.33, paint: { "line-color": "#141c2c", "line-width": 0.3 } },
-          { id: "grid15", type: "line", source: "esri", "source-layer": "15 degree grid", minzoom: 1.33, maxzoom: 2.33, paint: { "line-color": "#141c2c", "line-width": 0.3 } },
-          { id: "grid10", type: "line", source: "esri", "source-layer": "10 degree grid", minzoom: 2.33, maxzoom: 3.33, paint: { "line-color": "#141c2c", "line-width": 0.25 } }
+          // Ocean: pure black
+          { id: "ocean", type: "fill", source: "esri", "source-layer": "Ocean_Robinson",
+            paint: { "fill-color": "#050810" } },
+          // Land: very dark blue-black
+          { id: "land", type: "fill", source: "esri", "source-layer": "BNDA_WMO_Robinson",
+            paint: { "fill-color": "#0c1018" } },
+          // Coastlines: subtle glow
+          { id: "coast", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson",
+            filter: ["==", "_symbol", 2],
+            paint: { "line-color": "#1a3050", "line-width": 0.6 } },
+          // International borders: faint
+          { id: "borders", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson",
+            filter: ["==", "_symbol", 3],
+            paint: { "line-color": "#162540", "line-width": 0.4, "line-dasharray": [6, 3] } },
+          // Lat/lon grids: barely visible
+          { id: "grid30", type: "line", source: "esri", "source-layer": "30 degree grid",
+            maxzoom: 1.33, paint: { "line-color": "#0e1525", "line-width": 0.3 } },
+          { id: "grid15", type: "line", source: "esri", "source-layer": "15 degree grid",
+            minzoom: 1.33, maxzoom: 2.33, paint: { "line-color": "#0e1525", "line-width": 0.3 } },
+          { id: "grid10", type: "line", source: "esri", "source-layer": "10 degree grid",
+            minzoom: 2.33, maxzoom: 3.33, paint: { "line-color": "#0e1525", "line-width": 0.25 } }
         ]
       }
     });
