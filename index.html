@@ -257,20 +257,51 @@
         <h2>Earth in Action<span> Aerosols</span></h2>
       </div>
 
-      <p>An animated visualization of <strong>real atmospheric aerosol transport</strong> using NASA satellite data and global wind patterns.</p>
+      <p>An animated visualization of <strong>real atmospheric aerosol transport</strong> using NASA satellite data, global wind patterns, and GPU-accelerated rendering.</p>
 
       <h3>How This Map Was Created</h3>
       <ol>
         <li><span class="step-num">1</span><strong>Data Acquisition</strong> — Wind vectors (U10M, V10M) and aerosol surface mass concentrations are downloaded in real-time from <strong>NASA GEOS-FP</strong> (Forward Processing) at 0.25° global resolution via OPeNDAP. <span class="source-tag">No authentication required</span></li>
         <li><span class="step-num">2</span><strong>Aerosol Species</strong> — Five species are extracted: <span class="source-tag">BCSMASS</span> Black Carbon, <span class="source-tag">DUSMASS</span> Mineral Dust, <span class="source-tag">SSSMASS</span> Sea Salt, <span class="source-tag">OCSMASS</span> Organic Carbon, <span class="source-tag">SO4SMASS</span> Sulfate.</li>
-        <li><span class="step-num">3</span><strong>Aerosol Flux Computation</strong> — Wind vectors are weighted by each species' normalized concentration: <strong>flux = wind × (aerosol / P95)</strong>. This preserves wind direction but scales magnitude by how much aerosol is actually present.</li>
-        <li><span class="step-num">4</span><strong>PNG Encoding</strong> — U and V components are encoded as Red and Green channels (0–255 mapping to [-max, +max]), with magnitude in Blue. Result: ~100 KB per species at 1° resolution.</li>
-        <li><span class="step-num">5</span><strong>GPU Rendering</strong> — A <strong>WebGPU compute shader</strong> advects up to 500,000 particles in parallel on the GPU, with additive blending and SDF glow. Falls back to Canvas 2D (8K particles) on browsers without WebGPU.</li>
+        <li><span class="step-num">3</span><strong>Aerosol Flux Computation</strong> — Wind vectors are weighted by each species' normalized concentration: <strong>flux = wind x (aerosol / P95)</strong>. This preserves wind direction but scales magnitude by how much aerosol is actually present.</li>
+        <li><span class="step-num">4</span><strong>PNG Encoding</strong> — U and V components are encoded as Red and Green channels (0-255 mapping to [-max, +max]), with magnitude in Blue. Result: ~100 KB per species at 1 deg resolution.</li>
+        <li><span class="step-num">5</span><strong>GPU Rendering</strong> — Particles are advected and rendered entirely on the GPU using <strong>WebGPU compute shaders</strong> (see below).</li>
       </ol>
+
+      <h3 style="color:#76b900;">WebGPU GPU-Accelerated Rendering</h3>
+      <p style="margin-bottom:12px;">This visualization uses the <strong>WebGPU API</strong> to harness your <strong>NVIDIA GPU</strong> directly from the browser — the same hardware that powers AI training and real-time ray tracing.</p>
+
+      <div style="background:rgba(118,185,0,0.06);border:1px solid rgba(118,185,0,0.15);border-radius:8px;padding:14px;margin-bottom:14px;">
+        <p style="font-size:13px;color:var(--text-primary);margin-bottom:10px;font-weight:500;">GPU Pipeline Architecture (4 passes per frame at 60 FPS):</p>
+        <ol style="margin:0;">
+          <li><strong>Compute Pass</strong> — A WGSL compute shader dispatches 500,000 particles across GPU workgroups. Each thread samples the wind texture via <code style="background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;font-size:11px;">textureLoad()</code>, decodes U/V aerosol flux, and advects its particle. Stochastic recycling creates natural density variation.</li>
+          <li><strong>Fade Pass</strong> — A full-screen triangle reads the previous frame's trail texture with reduced alpha, creating smooth particle trails via ping-pong render targets.</li>
+          <li><strong>Render Pass</strong> — Particles are drawn as instanced quads with a signed distance field (SDF) circular glow in the fragment shader. Additive blending (<code style="background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;font-size:11px;">srcFactor: src-alpha, dstFactor: one</code>) creates the neon trail effect.</li>
+          <li><strong>Screen Pass</strong> — The final composited trail texture is copied to the swapchain canvas, overlaid on the ArcGIS basemap with transparency.</li>
+        </ol>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:140px;background:rgba(118,185,0,0.06);border:1px solid rgba(118,185,0,0.12);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:#76b900;">500K</div>
+          <div style="font-size:10px;color:var(--text-secondary);">PARTICLES ON GPU</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(118,185,0,0.06);border:1px solid rgba(118,185,0,0.12);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:#76b900;">60</div>
+          <div style="font-size:10px;color:var(--text-secondary);">FPS TARGET</div>
+        </div>
+        <div style="flex:1;min-width:140px;background:rgba(118,185,0,0.06);border:1px solid rgba(118,185,0,0.12);border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:22px;font-weight:700;color:#76b900;">WGSL</div>
+          <div style="font-size:10px;color:var(--text-secondary);">SHADER LANGUAGE</div>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;"><strong style="color:var(--text-primary);">Why WebGPU?</strong> Traditional Canvas 2D can handle ~8,000 particles before frame drops. WebGPU compute shaders process all 500,000 particles in parallel across GPU cores — a <strong>62x increase</strong> — while freeing the CPU for map rendering. On browsers without WebGPU support, the app automatically falls back to Canvas 2D.</p>
 
       <h3>Data Sources</h3>
       <ul>
-        <li><strong>Wind & Aerosols:</strong> NASA GMAO GEOS-FP 0.25° — <span class="source-tag">opendap.nccs.nasa.gov</span></li>
+        <li><strong>Wind & Aerosols:</strong> NASA GMAO GEOS-FP 0.25 deg — <span class="source-tag">opendap.nccs.nasa.gov</span></li>
+        <li><strong>GPU Compute:</strong> WebGPU API + WGSL Shaders — <span class="source-tag">NVIDIA GPU</span></li>
         <li><strong>Basemap:</strong> Esri Dark Gray Vector — <span class="source-tag">ArcGIS Maps SDK 5.0</span></li>
         <li><strong>Processing:</strong> Python (xarray, NumPy, Pillow) — <span class="source-tag">OPeNDAP streaming</span></li>
       </ul>
@@ -278,8 +309,8 @@
       <h3>How to Use</h3>
       <ul>
         <li><strong>Switch species</strong> — Click any aerosol type in the left panel to see its unique transport pattern</li>
-        <li><strong>Pan & zoom</strong> — Drag the map or scroll to explore regions. Particles re-spawn to fill the view.</li>
-        <li><strong>Adjust animation</strong> — Use sliders to control particle count, speed, trail length, and line width</li>
+        <li><strong>Pan & zoom</strong> — Drag the map or scroll to explore regions. Particles re-spawn to fill the view</li>
+        <li><strong>Adjust animation</strong> — Use sliders to control particle count (up to 1M with WebGPU), speed, trail length, and particle size</li>
         <li><strong>Interpret colors</strong> — Brighter, denser particle trails = higher aerosol concentration being transported by wind</li>
       </ul>
 
