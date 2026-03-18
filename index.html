@@ -75,8 +75,7 @@
     /* Map */
     .map-wrap { position: relative; overflow: hidden; background: #000; }
     #viewDiv { width: 100%; height: 100%; }
-    /* Dark overlay to dim basemap — makes particles pop */
-    #mapDim { position: absolute; inset: 0; background: rgba(0,0,0,0.45); z-index: 1; pointer-events: none; }
+    /* Dark overlay — not needed with dark Robinson basemap */
     #particleCanvas {
       position: absolute; inset: 0; pointer-events: none; z-index: 2;
     }
@@ -240,7 +239,6 @@
 
     <div class="map-wrap">
       <div id="viewDiv"></div>
-      <div id="mapDim"></div>
       <canvas id="particleCanvas"></canvas>
       <div class="loading" id="loader">
         <div class="spinner"></div>
@@ -331,20 +329,49 @@
   <script type="module">
     import Map from "@arcgis/core/Map.js";
     import MapView from "@arcgis/core/views/MapView.js";
+    import VectorTileLayer from "@arcgis/core/layers/VectorTileLayer.js";
+    import Basemap from "@arcgis/core/Basemap.js";
+    import SpatialReference from "@arcgis/core/geometry/SpatialReference.js";
 
     document.getElementById("dateDisplay").textContent = new Date().toLocaleDateString("en-US", {
       weekday: "long", year: "numeric", month: "long", day: "numeric"
     });
 
     // ═══════════════════════════════════════
-    //  ArcGIS dark basemap
+    //  Dark Robinson basemap (WKID 54030)
+    //  Custom restyled WMO Robinson Agreed tiles
     // ═══════════════════════════════════════
-    const map = new Map({ basemap: "dark-gray-vector" });
+    const darkRobinson = new VectorTileLayer({
+      url: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer",
+      // Apply custom dark style override
+      customStyle: {
+        version: 8,
+        sprite: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer/resources/sprites/sprite",
+        glyphs: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf",
+        sources: { esri: { type: "vector", url: "https://tiles.arcgis.com/tiles/supi6xDj3qduY1gn/arcgis/rest/services/WMO_Basemap_Robinson_Agreed/VectorTileServer" } },
+        layers: [
+          { id: "ocean", type: "fill", source: "esri", "source-layer": "Ocean_Robinson", paint: { "fill-color": "#080c14" } },
+          { id: "land", type: "fill", source: "esri", "source-layer": "BNDA_WMO_Robinson", paint: { "fill-color": "#111827" } },
+          { id: "coast", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson", filter: ["==", "_symbol", 2], paint: { "line-color": "#1e3a5f", "line-width": 0.5 } },
+          { id: "borders", type: "line", source: "esri", "source-layer": "BNDL_WMO_Robinson", filter: ["==", "_symbol", 3], paint: { "line-color": "#1e2d45", "line-dasharray": [8, 4], "line-width": 0.5 } },
+          { id: "grid30", type: "line", source: "esri", "source-layer": "30 degree grid", maxzoom: 1.33, paint: { "line-color": "#141c2c", "line-width": 0.3 } },
+          { id: "grid15", type: "line", source: "esri", "source-layer": "15 degree grid", minzoom: 1.33, maxzoom: 2.33, paint: { "line-color": "#141c2c", "line-width": 0.3 } },
+          { id: "grid10", type: "line", source: "esri", "source-layer": "10 degree grid", minzoom: 2.33, maxzoom: 3.33, paint: { "line-color": "#141c2c", "line-width": 0.25 } }
+        ]
+      }
+    });
+
+    const robinson = new SpatialReference({ wkid: 54030 });
+    const map = new Map({
+      basemap: new Basemap({ baseLayers: [darkRobinson] })
+    });
     const view = new MapView({
       container: "viewDiv", map,
-      center: [40, 15], zoom: 1,
-      constraints: { minZoom: 1, maxZoom: 6, rotationEnabled: false },
-      background: { color: [0, 0, 0, 1] },
+      spatialReference: robinson,
+      center: [20, 10],
+      scale: 150000000,
+      constraints: { minScale: 250000000, maxScale: 20000000, rotationEnabled: false },
+      background: { color: [8, 12, 20, 1] },
       ui: { components: ["zoom"] },
       popup: { autoOpenEnabled: false }
     });
@@ -424,42 +451,45 @@
       canvas.height = ch;
     }
 
-    // Convert lon/lat to Web Mercator, then to screen pixels
-    const DEG2RAD = Math.PI / 180;
-    const HALF_SIZE = 20037508.342789244; // Web Mercator half-world size
-
-    function lonToMerc(lon) { return lon * HALF_SIZE / 180; }
-    function latToMerc(lat) {
-      const rad = Math.max(-85, Math.min(85, lat)) * DEG2RAD;
-      return Math.log(Math.tan(Math.PI / 4 + rad / 2)) * HALF_SIZE / Math.PI;
+    // ── Robinson projection (fast JS lookup table) ──
+    const ROB = [
+      [1.0000,0.0000],[0.9986,0.0620],[0.9954,0.1240],[0.9900,0.1860],
+      [0.9822,0.2480],[0.9730,0.3100],[0.9600,0.3720],[0.9427,0.4340],
+      [0.9216,0.4958],[0.8962,0.5571],[0.8679,0.6176],[0.8350,0.6769],
+      [0.7986,0.7346],[0.7597,0.7903],[0.7186,0.8435],[0.6732,0.8936],
+      [0.6213,0.9394],[0.5722,0.9761],[0.5322,1.0000]
+    ];
+    function robXY(lon, lat) {
+      const a = Math.min(Math.abs(lat), 90), i = a / 5;
+      const lo = Math.floor(i), hi = Math.min(lo+1,18), f = i - lo;
+      const xf = ROB[lo][0]+(ROB[hi][0]-ROB[lo][0])*f;
+      const yf = ROB[lo][1]+(ROB[hi][1]-ROB[lo][1])*f;
+      return [0.8487*xf*lon*Math.PI/180, 1.3523*yf*(lat<0?-1:1)];
     }
+    const [ROB_W] = robXY(180,0), [,ROB_H] = robXY(0,90);
 
     function project(lon, lat) {
+      if (cw === 0) return null;
+      const [rx, ry] = robXY(lon, lat);
+      // Map Robinson normalized coords to screen, matching view extent
       const ext = view.extent;
       if (!ext) return null;
-      const mx = lonToMerc(lon);
-      const my = latToMerc(lat);
-      const x = ((mx - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
-      const y = (1 - (my - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
+      // Robinson projection constants for the WMO tile scheme
+      const R = 6371007.181; // Robinson earth radius
+      const rxM = rx * R, ryM = ry * R;
+      const x = ((rxM - ext.xmin) / (ext.xmax - ext.xmin)) * cw;
+      const y = (1 - (ryM - ext.ymin) / (ext.ymax - ext.ymin)) * ch;
       return [x, y];
     }
 
-    // Get visible extent in lon/lat for spawning particles
     function getGeoExtent() {
-      const ext = view.extent;
-      if (!ext) return { lonMin: -180, lonMax: 180, latMin: -60, latMax: 70 };
-      const lonMin = Math.max(-180, ext.xmin * 180 / HALF_SIZE);
-      const lonMax = Math.min(180, ext.xmax * 180 / HALF_SIZE);
-      const latMin = Math.max(-85, (Math.atan(Math.exp(ext.ymin * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
-      const latMax = Math.min(85, (Math.atan(Math.exp(ext.ymax * Math.PI / HALF_SIZE)) * 2 - Math.PI / 2) / DEG2RAD);
-      return { lonMin, lonMax, latMin, latMax };
+      return { lonMin: -175, lonMax: 175, latMin: -78, latMax: 78 };
     }
 
     function randomParticle() {
-      const ge = getGeoExtent();
       return {
-        x: ge.lonMin + Math.random() * (ge.lonMax - ge.lonMin),
-        y: ge.latMin + Math.random() * (ge.latMax - ge.latMin),
+        x: -175 + Math.random() * 350,
+        y: -78 + Math.random() * 156,
         age: Math.floor(Math.random() * 80)
       };
     }
@@ -544,9 +574,7 @@
         // Wrap/reset
         if (p.x > 180) p.x -= 360;
         if (p.x < -180) p.x += 360;
-        if (p.y > 85 || p.y < -85) { particles[i] = randomParticle(); continue; }
-        const ge = getGeoExtent();
-        if (p.x < ge.lonMin || p.x > ge.lonMax || p.y < ge.latMin || p.y > ge.latMax) {
+        if (p.y > 78 || p.y < -78 || p.x > 175 || p.x < -175) {
           particles[i] = randomParticle(); continue;
         }
 
