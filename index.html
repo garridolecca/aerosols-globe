@@ -197,6 +197,7 @@
 
       <div class="card">
         <h3>Animation Controls</h3>
+        <div id="gpuBadge" style="display:none;margin-bottom:8px;padding:4px 8px;border-radius:5px;background:rgba(118,185,0,0.12);color:#76b900;font-size:9px;font-weight:700;letter-spacing:0.08em;text-align:center;">NVIDIA WebGPU &mdash; 500K PARTICLES</div>
         <div class="slider-row">
           <label>Particle Count: <strong id="countVal">8000</strong></label>
           <input type="range" id="countSlider" min="1000" max="20000" value="8000" step="1000" />
@@ -264,7 +265,7 @@
         <li><span class="step-num">2</span><strong>Aerosol Species</strong> — Five species are extracted: <span class="source-tag">BCSMASS</span> Black Carbon, <span class="source-tag">DUSMASS</span> Mineral Dust, <span class="source-tag">SSSMASS</span> Sea Salt, <span class="source-tag">OCSMASS</span> Organic Carbon, <span class="source-tag">SO4SMASS</span> Sulfate.</li>
         <li><span class="step-num">3</span><strong>Aerosol Flux Computation</strong> — Wind vectors are weighted by each species' normalized concentration: <strong>flux = wind × (aerosol / P95)</strong>. This preserves wind direction but scales magnitude by how much aerosol is actually present.</li>
         <li><span class="step-num">4</span><strong>PNG Encoding</strong> — U and V components are encoded as Red and Green channels (0–255 mapping to [-max, +max]), with magnitude in Blue. Result: ~100 KB per species at 1° resolution.</li>
-        <li><span class="step-num">5</span><strong>Browser Rendering</strong> — A custom Canvas particle system decodes the PNG, spawns thousands of particles, and advects them along the aerosol flux vectors each frame at 60 FPS.</li>
+        <li><span class="step-num">5</span><strong>GPU Rendering</strong> — A <strong>WebGPU compute shader</strong> advects up to 500,000 particles in parallel on the GPU, with additive blending and SDF glow. Falls back to Canvas 2D (8K particles) on browsers without WebGPU.</li>
       </ol>
 
       <h3>Data Sources</h3>
@@ -285,7 +286,7 @@
       <div class="credit">
         <p>Created by</p>
         <strong>Jhonatan Garrido-Lecca</strong>
-        <p style="margin-top:6px;">Powered by NASA GEOS-FP, ArcGIS Maps SDK, and open atmospheric science data.</p>
+        <p style="margin-top:6px;">Powered by NASA GEOS-FP, NVIDIA WebGPU, ArcGIS Maps SDK, and open atmospheric science data.</p>
       </div>
 
       <button class="enter-btn" id="enterBtn">Explore the Map</button>
@@ -529,51 +530,91 @@
     }
 
     // ═══════════════════════════════════════
-    //  Init
+    //  Init: try WebGPU, fall back to Canvas 2D
     // ═══════════════════════════════════════
+    let gpuController = null;
+
     view.when(async () => {
       resizeCanvas();
       window.addEventListener("resize", resizeCanvas);
       view.watch("extent", resizeCanvas);
 
-      await loadSpecies("composite");
-      initParticles();
+      // Try WebGPU (500K particles on GPU)
+      try {
+        const { initWebGPUParticles } = await import("./webgpu-integration.js");
+        gpuController = await initWebGPUParticles(view, canvas);
+      } catch (e) {
+        console.warn("WebGPU module load failed:", e);
+      }
+
+      if (gpuController) {
+        // WebGPU active!
+        console.log("WebGPU active — 500K particles on GPU");
+        document.getElementById("gpuBadge").style.display = "block";
+        document.getElementById("countVal").textContent = "500,000";
+        document.getElementById("countSlider").max = 1000000;
+        document.getElementById("countSlider").min = 50000;
+        document.getElementById("countSlider").step = 50000;
+        document.getElementById("countSlider").value = 500000;
+      } else {
+        // Canvas 2D fallback
+        console.log("Canvas 2D fallback — 8K particles");
+        await loadSpecies("composite");
+        initParticles();
+        animate();
+      }
+
       document.getElementById("loader").classList.add("hidden");
-      animate();
     });
 
     // ═══════════════════════════════════════
-    //  UI Controls
+    //  UI Controls (work with both engines)
     // ═══════════════════════════════════════
     document.querySelectorAll(".species-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
         document.querySelectorAll(".species-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        currentSpecies = btn.dataset.species;
-        await loadSpecies(currentSpecies);
-        initParticles();
+        const species = btn.dataset.species;
+        if (gpuController) {
+          await gpuController.setSpecies(species);
+        } else {
+          currentSpecies = species;
+          await loadSpecies(species);
+          initParticles();
+        }
       });
     });
 
     document.getElementById("countSlider").addEventListener("input", e => {
-      numParticles = parseInt(e.target.value);
-      document.getElementById("countVal").textContent = numParticles;
-      initParticles();
+      const n = parseInt(e.target.value);
+      document.getElementById("countVal").textContent = n >= 1000 ? (n/1000).toFixed(0) + "K" : n;
+      if (gpuController) {
+        gpuController.setParticleCount(n);
+      } else {
+        numParticles = n;
+        initParticles();
+      }
     });
 
     document.getElementById("speedSlider").addEventListener("input", e => {
-      speedFactor = e.target.value / 10;
-      document.getElementById("speedVal").textContent = speedFactor.toFixed(1);
+      const v = e.target.value / 10;
+      document.getElementById("speedVal").textContent = v.toFixed(1);
+      if (gpuController) { gpuController.setSpeed(v); }
+      else { speedFactor = v; }
     });
 
     document.getElementById("trailSlider").addEventListener("input", e => {
-      fadeOpacity = e.target.value / 100;
-      document.getElementById("trailVal").textContent = fadeOpacity.toFixed(2);
+      const v = e.target.value / 100;
+      document.getElementById("trailVal").textContent = v.toFixed(2);
+      if (gpuController) { gpuController.setFadeOpacity(v); }
+      else { fadeOpacity = v; }
     });
 
     document.getElementById("widthSlider").addEventListener("input", e => {
-      lineWidth = e.target.value / 10;
-      document.getElementById("widthVal").textContent = lineWidth.toFixed(1);
+      const v = e.target.value / 10;
+      document.getElementById("widthVal").textContent = v.toFixed(1);
+      if (gpuController) { gpuController.setPointSize(v); }
+      else { lineWidth = v; }
     });
 
     // Intro dismiss
